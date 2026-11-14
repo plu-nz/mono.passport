@@ -66,6 +66,26 @@ if [ -f "$temp_dir/passage-native-host" ] && [ -f "$temp_dir/install-native-host
 fi
 
 printf 'Passage installed at %s\n' "$user_bin/passage"
+
+# Passage drives GNU pass, GnuPG and Git; it installs without them but cannot open a vault.
+missing=''
+for dependency in pass gpg git; do
+  command -v "$dependency" >/dev/null 2>&1 || missing="$missing $dependency"
+done
+if [ -n "$missing" ]; then
+  printf 'Passage also needs:%s. Install them with:\n' "$missing"
+  if command -v pacman >/dev/null 2>&1; then
+    printf '  sudo pacman -S --needed pass gnupg git\n'
+  elif command -v apt-get >/dev/null 2>&1; then
+    printf '  sudo apt install pass gnupg git\n'
+  elif command -v dnf >/dev/null 2>&1; then
+    printf '  sudo dnf install pass gnupg2 git\n'
+  elif command -v zypper >/dev/null 2>&1; then
+    printf '  sudo zypper install password-store gpg2 git\n'
+  else
+    printf '  your package manager (GNU pass, GnuPG and Git)\n'
+  fi
+fi
 if [ -f "$temp_dir/passage-native-host" ] && [ "$host_registered" = false ]; then
   printf 'Connector installed. To register Brave and Chrome, run: %s/passage-install-native-host %s/passage-native-host ID_BRAVE ID_CHROME\n' "$user_bin" "$user_bin"
 fi

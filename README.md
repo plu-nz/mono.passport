@@ -6,7 +6,7 @@ This document records the requirements discussed so far. It describes the desire
 
 ## Code status
 
-The desktop app allows you to choose an existing GNU pass vault, create another one with a new or already available GPG key, list, search, open, create, edit and delete entries, generate TOTP and block access from extensions. The application also supports GitHub authentication through the GitHub CLI, initializing Git in the vault, configuring a remote, committing encrypted changes, Git sync, and preserving both versions of conflicting `.gpg` entries. Approval and revocation of extensions are in the interface, and the Native Messaging host offers search by URL and autofill after a user action. The controlled form test matrix passed on Brave Origin and stable Chrome; the real GitHub login form was also tested on both browsers with dummy credentials, without submitting the form.
+On first run, the desktop app creates or restores a vault with only a GitHub sign-in and a master password, then keeps it in sync on its own. It also allows you to choose an existing GNU pass vault, create another one with a new or already available GPG key, list, search, open, create, edit and delete entries, generate TOTP and block access from extensions. For manual setups, the application also supports GitHub authentication through the GitHub CLI, initializing Git in the vault, configuring a remote, committing encrypted changes, Git sync, and preserving both versions of conflicting `.gpg` entries. Approval and revocation of extensions are in the interface, and the Native Messaging host offers search by URL and autofill after a user action. The controlled form test matrix passed on Brave Origin and stable Chrome; the real GitHub login form was also tested on both browsers with dummy credentials, without submitting the form.
 
 | Directory | Responsibility |
 | --- | --- |
@@ -31,7 +31,21 @@ To generate the extension, run `pnpm build:extension` and load `extension/.outpu
 
 Browser testing uses a vault, HTTPS server, and disposable profiles, with the original extension manifest. After building the extension and host, run `node extension/tests/browser-smoke.mjs BROWSER_PATH HOST_PATH HOST_INSTALLER_PATH SCENARIO`. The scenarios are `standard`, `usernameOnly`, `passwordOnly`, `autocompleteOff`, `ambiguousPassword`, `ambiguousUsername`, `hiddenPassword`, `transparentPassword`, `newPassword`, `iframe`, `noFields`, `githubLive` and `herokuLive`. Each scenario checks pairing, entry listing, autofill result and refusal after navigation. `*Live` scenarios only populate test fields on external pages; they do not send forms. `githubLive` passed Brave Origin and Chrome stable; `herokuLive` passed in Chrome stable, but Brave did not load this page in this environment. Recent stable Chrome does not support `--load-extension`; run the test with `PASSAGE_BROWSER_HEADED=1` to load the extension into the disposable profile via the debug protocol. The matrix passed on Chrome stable and Brave Origin; the test requires OpenSSL.
 
-### Open or create a desktop vault
+### Get started: GitHub and a master password
+
+When no vault exists, Passage opens a welcome screen.
+
+- **Create my vault**: sign in with GitHub (Passage shows a code to enter on github.com; there is no terminal and no GitHub CLI), then create a master password. Passage suggests a six-word passphrase and refuses weak passwords. It then generates a GPG key protected by that password, creates a `pass` vault in `~/.password-store`, creates the private repository `passage-vault` on your account, uploads the vault, and saves an encrypted recovery copy of the key. Print the emergency kit it offers and keep it with your written-down password.
+- **I already have a vault**: on another computer, sign in to the same GitHub account and type the master password. Passage downloads the vault, opens the recovery copy, adds the key to this computer and unlocks it.
+
+The master password is the GPG passphrase. Passage unlocks the key in `gpg-agent`, so the browser extension and `pass` in the terminal work without another prompt until the agent forgets it; **Lock** (toolbar or **Settings → Security and sync**) forgets it for this key only. Saving an entry syncs it in the background, Passage pulls changes when it starts and every minute, and the toolbar shows **Synced**, **Offline** or **Needs attention**. **Change master password** updates the key and the recovery copy together; other computers adopt the new password the next time it is typed there. **Use in other apps** saves the key, still protected by the master password, for `pass`, browserpass or Android Password Store.
+
+The vault stays a standard `pass` store on `main`. The recovery copy lives on a separate branch, `passage-recovery`, as one commit holding the exported key wrapped with Argon2id and XChaCha20-Poly1305 under the master password. Nobody can recover a forgotten master password. Anyone with access to the repository can try to guess it offline, so the password strength and the security of the GitHub account (use two-factor authentication) protect the vault. The GitHub sign-in is saved in the system keyring (Secret Service), or in a file only your user can read when there is none. **Sign out** forgets it here; remove Passage's access on GitHub under *Settings → Applications → Authorized OAuth Apps*. See [the onboarding plan](docs/simple-onboarding-plan.md) for the design.
+
+### Advanced: open or create a vault manually
+
+The manual setup lives under **Settings → Advanced**, and the welcome screen links to it.
+
 
 In the **Vault** panel, enter the absolute directory path and choose **Open existing** for a vault already initialized with `.gpg-id`. To create, choose a private GPG key from the list and click **Create Vault**, or open **Create GPG Key and Vault** to generate a new key via GPG and initialize the vault in sequence. The passphrase is requested by the system's `pinentry`; Passage does not receive it. Passage uses `pass init` to create the GNU pass-compatible structure. To open a vault from another device, import the corresponding private key before trying to read the entries.
 
@@ -56,7 +70,7 @@ With the vault open, click **New** and, in the dialog that opens, enter the entr
 
 The **Generator** tab creates a random password with the browser's cryptographic generator. Choose the length (5 to 128), the character sets (A–Z, a–z, 0–9 and `!@#$%^&*`), whether to avoid ambiguous characters such as `l`, `1`, `O` and `0`, and the minimum count of numbers and special characters. **Copy** puts the password on the clipboard and clears it after 45 seconds if it is still there; **Create login** opens a new entry with the password filled in. Passage remembers the options on this device, never the generated password.
 
-### Connect a GitHub account
+### Advanced: connect a vault through the GitHub CLI
 
 Install [GitHub CLI (`gh`)](https://cli.github.com/). In **Settings → Git sync**, click **Sign in with GitHub**. Passage opens `gh auth login` in the default terminal; Complete your browser login and return to Passage to click **Check account**. If the default terminal cannot be opened, run `gh auth login --web` manually. The token is managed by `gh`, which can use secure system storage or, if that is not available, a local file; check `gh auth status` for the location used.
 
@@ -82,7 +96,7 @@ On Linux x86_64, with `curl`, `tar` and `sha256sum`. Releases after `v0.2.1` nee
 curl -LsSf https://passage.plu.nz/install.sh | sh
 ```
 
-The script downloads the ready-made binary from [latest release](https://github.com/plu-nz/mono.passage/releases/latest), checks SHA-256 and installs `~/.local/bin/passage` with a menu shortcut. Starting from `v0.2.1`, the package installs the unpacked extension to `~/.local/share/passage/extension-chromium` (or to `XDG_DATA_HOME/passage/extension-chromium`) and automatically registers the host for Brave and Chrome. Upload this folder once to `brave://extensions` and `chrome://extensions`, with developer mode enabled, and approve each browser in **Settings → Browser extensions**. The ID of the unzipped extension is fixed: `edmjpcolampgjbnmldchmnkinmhakjgm`. You don't need to clone the repository or install Node.js, pnpm or Go to use the release. GNU `pass`, GPG, Python 3, GTK4 and WebKitGTK 6.0 are runtime dependencies. `~/.local/bin` must be in the session's `PATH`.
+The script downloads the ready-made binary from [latest release](https://github.com/plu-nz/mono.passage/releases/latest), checks SHA-256 and installs `~/.local/bin/passage` with a menu shortcut. Starting from `v0.2.1`, the package installs the unpacked extension to `~/.local/share/passage/extension-chromium` (or to `XDG_DATA_HOME/passage/extension-chromium`) and automatically registers the host for Brave and Chrome. Upload this folder once to `brave://extensions` and `chrome://extensions`, with developer mode enabled, and approve each browser in **Settings → Browser extensions**. The ID of the unzipped extension is fixed: `edmjpcolampgjbnmldchmnkinmhakjgm`. You don't need to clone the repository or install Node.js, pnpm or Go to use the release. GNU `pass`, GPG, Git, Python 3, GTK4 and WebKitGTK 6.0 are runtime dependencies; the installer prints the command to install the first three when they are missing. `~/.local/bin` must be in the session's `PATH`.
 
 The same command upgrades an existing installation to the latest release. Close and open Passage after updating and click **Reload** on the extension in `brave://extensions` and `chrome://extensions` to apply the new version. The installed version changes only when a new release is published.
 
@@ -106,7 +120,7 @@ The [execution plan](docs/execution-plan.md) details the Linux desktop and exten
 
 - The vault format remains compatible with GNU `pass`: a tree of `.gpg` files encrypted with OpenPGP.
 - The terminal is a first-class interface. User can continue using `pass` and `pass git` without opening Passage.
-- Private Git repositories transport the encrypted files. Private PGP keys, unlock passwords, and Git access credentials do not go into this repository.
+- Private Git repositories transport the encrypted files. Unlock passwords and Git access credentials never go into the vault repository. The private key goes there only for vaults Passage creates, sealed with the master password on the separate `passage-recovery` branch.
 - The same vault should be usable on desktop, Android, terminal, and the web, without relying on a server that knows the passwords in plaintext.
 - The project must leverage existing components of the `pass` ecosystem when they meet the requirements; Passage-specific interface and integrations will be built where there are gaps.
 
@@ -203,3 +217,7 @@ MVP delivers **desktop application for Linux and extensions for Brave and Chrome
 - [Browserpass](https://github.com/browserpass/browserpass-extension)
 - [Android Password Store, fork with passkeys](https://github.com/agrahn/Android-Password-Store)
 - [OpenPGP.js](https://docs.openpgpjs.org/)
+
+## Credits
+
+Passphrase suggestions use the [EFF Large Wordlist](https://www.eff.org/dice) by the Electronic Frontier Foundation, under [CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/). Password strength is rated with [zxcvbn-ts](https://github.com/zxcvbn-ts/zxcvbn).
