@@ -359,16 +359,18 @@ function App() {
     saveOptions(genOptions());
     regenerate();
   });
+  // Icons are functions: a JSX value is a DOM node and can sit in one place
+  // only, so each button renders its own copy.
   // Entry field actions: copy (a copied password leaves the clipboard after
   // 45 seconds, as `pass -c` does), show or hide the password, open the URL.
   const icons = {
-    copy: <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>,
-    check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
-    eye: <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
-    eyeOff: <><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.6 3.5M6.6 6.6C3.6 8.5 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="M3 3l18 18" /></>,
-    external: <><path d="M14 4h6v6" /><path d="M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></>,
+    copy: () => <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>,
+    check: () => <path d="M5 12.5l4.5 4.5L19 7.5" />,
+    eye: () => <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
+    eyeOff: () => <><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.6 3.5M6.6 6.6C3.6 8.5 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="M3 3l18 18" /></>,
+    external: () => <><path d="M14 4h6v6" /><path d="M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></>,
   };
-  const fieldAction = (label: string, onClick: () => void, paths: JSX.Element) => <button class="icon-button field-action" aria-label={label} title={label} onClick={onClick}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths}</svg></button>;
+  const fieldAction = (label: string, onClick: () => void, paths: () => JSX.Element) => <button class="icon-button field-action" aria-label={label} title={label} onClick={onClick}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths()}</svg></button>;
   const [copiedField, setCopiedField] = createSignal('');
   let copiedTimer: number | undefined;
   let secretClipboardTimer: number | undefined;
