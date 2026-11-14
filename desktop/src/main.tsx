@@ -5,6 +5,7 @@ import { Button, Card, TextField, Theme } from '@plunz/storybook';
 import '@plunz/storybook/styles.css';
 import { invoke } from './service';
 import { backdropClose } from './modal';
+import { ConfirmHost, confirmAction } from './confirm';
 import { ChangePasswordDialog, EmergencyKit, ExportKeyDialog } from './account';
 import { GitHubSignIn, Onboarding, UnlockScreen, type GitHubAccount, type OnboardingStatus } from './onboarding';
 import { generatePassword, loadOptions, maxLength, maxMinimum, minLength, normalize, saveOptions, specialChars, type GeneratorOptions } from './generator';
@@ -202,10 +203,11 @@ function App() {
     } catch { return false; }
   };
   async function lockNow() {
+    if (!await confirmAction({ title: 'Lock Passport?', message: 'You will need your master password to open entries again. The browser extension and pass in the terminal lock too.', confirm: 'Lock' })) return;
     try { await invoke('lock'); clearSecrets(); setKeyLocked(true); } catch (cause) { setError(String(cause)); }
   }
   async function signOut() {
-    if (!window.confirm('Sign out of GitHub on this computer? Sync stops until you sign in again.')) return;
+    if (!await confirmAction({ title: 'Sign out of GitHub?', message: 'Sync stops on this computer until you sign in again. Your vault and its repository stay as they are.', confirm: 'Sign out' })) return;
     try { await invoke('github_sign_out'); await refreshAccount(); } catch (cause) { setAccountError(String(cause)); }
   }
   const runSync = async () => {
@@ -332,7 +334,8 @@ function App() {
   }
 
   async function deleteEntry() {
-    if (!selected() || !secret() || entryBusy() || !window.confirm(`Delete ${selected()} from the vault? This change may also be recorded in Git.`)) return;
+    if (!selected() || !secret() || entryBusy()) return;
+    if (!await confirmAction({ title: `Delete ${selected()}?`, message: 'The entry is removed from the vault and the deletion syncs to your other computers. Older Git history still holds the encrypted file.', confirm: 'Delete' })) return;
     setEntryBusy(true);
     setError('');
     try {
@@ -442,6 +445,7 @@ function App() {
   }
 
   async function changeBrowserLock(lock: boolean) {
+    if (lock && !await confirmAction({ title: 'Lock browser extensions?', message: 'Extensions cannot fill passwords until you unlock them here.', confirm: 'Lock extensions' })) return;
     setBrowserLockError('');
     try {
       await invoke(lock ? 'lock_browser_access' : 'unlock_browser_access');
@@ -468,6 +472,7 @@ function App() {
   }
 
   async function revokePairing(pairing: Pairing) {
+    if (!await confirmAction({ title: 'Revoke this extension?', message: `${pairing.origin} stops filling passwords. Pair it again with a new code to use it.`, confirm: 'Revoke' })) return;
     setPairingError('');
     try { await invoke('revoke_pairing', { origin: pairing.origin, installationId: pairing.installationId }); await refreshPairings(); }
     catch (cause) { setPairingError(String(cause)); }
@@ -554,7 +559,7 @@ function App() {
     await refreshGit();
     setActiveTab('vault');
   }
-  return <Theme class="passport" accent="red" shape="square">{showWizard()
+  return <Theme class="passport" accent="red" shape="square"><ConfirmHost />{showWizard()
     ? <Onboarding status={onboardingStatus()!} onDone={() => void finishOnboarding()} onAdvanced={() => { setSkipWizard(true); setActiveTab('settings'); }} />
     : keyLocked() ? <UnlockScreen repo={managedRepo()} onUnlocked={() => { setKeyLocked(false); void reloadEntries(); }} />
     : <main class="shell">

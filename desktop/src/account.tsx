@@ -11,11 +11,11 @@ const message = (cause: unknown) => String(cause).replace(/^Error:\s*/, '');
 
 // Modal opens as a native dialog; Escape, the close button or a click on the
 // backdrop dismiss it, except while it is busy.
-function Modal(props: { title: string; onClose: () => void; busy?: boolean; class?: string; children: JSX.Element }) {
+export function Modal(props: { title: string; onClose: () => void; busy?: boolean; class?: string; children: JSX.Element }) {
   const open = (dialog: HTMLDialogElement) => queueMicrotask(() => {
     if (!dialog.isConnected || dialog.open) return;
     dialog.showModal();
-    dialog.querySelector<HTMLInputElement>('input')?.focus();
+    dialog.querySelector<HTMLElement>('input, .form-actions button')?.focus();
   });
   const backdrop = backdropClose(() => { if (!props.busy) props.onClose(); });
   return <dialog class={`modal ${props.class || ''}`} ref={open} aria-label={props.title} {...backdrop} onCancel={event => { event.preventDefault(); if (!props.busy) props.onClose(); }}>

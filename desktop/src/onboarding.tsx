@@ -5,6 +5,7 @@ import { createEffect, createSignal, onCleanup, onMount, type JSX } from 'solid-
 import { Clipboard, Events } from '@wailsio/runtime';
 import { Button, Card, TextField } from '@plunz/storybook';
 import { EmergencyKit } from './account';
+import { confirmAction } from './confirm';
 import { invoke } from './service';
 import { checkStrength, minScore, strengthLabels, suggestPassphrase, type Strength } from './strength';
 
@@ -166,6 +167,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
   }
 
   async function startOver() {
+    if (!await confirmAction({ title: 'Start over?', message: 'Passport forgets the interrupted setup. A key or repository it already created stays where it is.', confirm: 'Start over' })) return;
     try { await invoke('abandon_onboarding'); } catch (cause) { setError(message(cause)); return; }
     setScreen('welcome');
   }

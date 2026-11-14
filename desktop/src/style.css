@@ -251,3 +251,5 @@ code, pre { font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", mon
 .app-footer-status { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .app-footer-where { overflow: hidden; color: var(--muted); font-family: ui-monospace, "JetBrains Mono", monospace; text-overflow: ellipsis; white-space: nowrap; opacity: .8; }
 @media (max-width: 560px) { .app-footer-where { display: none; } }
+.confirm-modal { width: min(440px, calc(100vw - 32px)); }
+.confirm-message { margin: 0 0 20px; color: var(--muted); line-height: 1.5; }
