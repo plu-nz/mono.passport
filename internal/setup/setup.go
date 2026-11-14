@@ -35,7 +35,6 @@ type CreatedKeyVault struct {
 type settings struct {
 	VaultPath      string `json:"vaultPath,omitempty"`
 	RefreshSeconds *int   `json:"refreshSeconds,omitempty"`
-	NavPosition    string `json:"navPosition,omitempty"`
 	// GitHubRepo is the "owner/name" of a vault repository Passport created or restored.
 	GitHubRepo string `json:"githubRepo,omitempty"`
 	// AutoSync makes Passport pull and push on its own.
@@ -50,12 +49,6 @@ const DefaultRefreshSeconds = 30
 // RefreshChoices are the entry list reload intervals the desktop offers, in
 // seconds; 0 turns automatic reloading off.
 var RefreshChoices = []int{0, 5, 15, 30, 60, 300}
-
-// DefaultNavPosition places the desktop section navigation at the top of the
-// window; NavPositions lists the supported placements.
-const DefaultNavPosition = "top"
-
-var NavPositions = []string{"top", "bottom"}
 
 func settingsPath() (string, error) {
 	base := os.Getenv("XDG_CONFIG_HOME")
@@ -211,29 +204,6 @@ func SetRefreshSeconds(seconds int) error {
 	return updateSettings(func(s *settings) { s.RefreshSeconds = &seconds })
 }
 
-// NavPosition returns where the desktop shows its section navigation.
-func NavPosition() (string, error) {
-	config, err := settingsPath()
-	if err != nil {
-		return "", err
-	}
-	s, err := readSettings(config)
-	if err != nil {
-		return "", err
-	}
-	if !slices.Contains(NavPositions, s.NavPosition) {
-		return DefaultNavPosition, nil
-	}
-	return s.NavPosition, nil
-}
-
-// SetNavPosition stores one of NavPositions.
-func SetNavPosition(position string) error {
-	if !slices.Contains(NavPositions, position) {
-		return errors.New("Unsupported navigation position")
-	}
-	return updateSettings(func(s *settings) { s.NavPosition = position })
-}
 func SelectVault(path string) (VaultInfo, error) {
 	if err := allowed(); err != nil {
 		return VaultInfo{}, err

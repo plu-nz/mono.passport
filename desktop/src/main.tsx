@@ -79,8 +79,6 @@ function App() {
   const [createdFingerprint, setCreatedFingerprint] = createSignal('');
   const [refreshSeconds, setRefreshSeconds] = createSignal(30);
   const [refreshError, setRefreshError] = createSignal('');
-  const [navPosition, setNavPosition] = createSignal<'top' | 'bottom'>('top');
-  const [navError, setNavError] = createSignal('');
   const [onboardingStatus, setOnboardingStatus] = createSignal<OnboardingStatus | null>(null);
   const [skipWizard, setSkipWizard] = createSignal(false);
   const [keyLocked, setKeyLocked] = createSignal(false);
@@ -134,7 +132,6 @@ function App() {
   };
   onMount(async () => {
     try { setRefreshSeconds(await invoke<number>('refresh_seconds')); } catch (cause) { setRefreshError(String(cause)); }
-    try { setNavPosition(await invoke<'top' | 'bottom'>('nav_position')); } catch (cause) { setNavError(String(cause)); }
   });
   createEffect(() => {
     const seconds = refreshSeconds();
@@ -149,15 +146,6 @@ function App() {
       setRefreshSeconds(seconds);
     } catch (cause) {
       setRefreshError(String(cause));
-    }
-  };
-  const changeNavPosition = async (position: 'top' | 'bottom') => {
-    setNavError('');
-    try {
-      await invoke('set_nav_position', { position });
-      setNavPosition(position);
-    } catch (cause) {
-      setNavError(String(cause));
     }
   };
   const refreshVaultInfo = async () => {
@@ -532,7 +520,7 @@ function App() {
   const appBar = () => {
     const toolbar = activeTab() === 'vault' && <div class="toolbar"><input type="search" aria-label="Search entries" placeholder="Search vault…" value={query()} disabled={unavailable()} onInput={event => setQuery(event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Escape') setQuery(''); }} />{syncState().state !== 'off' && <button class={`sync-pill ${syncState().state}`} title={syncState().message || syncDescription()} onClick={() => setActiveTab('settings')}><span class="status-dot" />{syncLabels[syncState().state]}</button>}{managedRepo() && <button class="icon-button" aria-label="Lock" title="Lock" onClick={() => void lockNow()}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg></button>}<Button class="toolbar-new" disabled={unavailable()} onClick={startCreate}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New</Button></div>;
     const nav = <nav class="app-nav" aria-label="Sections">{tabs.map(tabButton)}</nav>;
-    return <div class={`app-bar ${navPosition()}`}>{navPosition() === 'top' ? <>{nav}{toolbar}</> : <>{toolbar}{nav}</>}</div>;
+    return <div class="app-bar">{nav}{toolbar}</div>;
   };
   const showWizard = createMemo(() => !skipWizard() && onboardingStatus() !== null && (state().kind === 'onboarding' || (state().kind === 'unavailable' && !!vaultInfo() && !vaultInfo()!.initialized && vaultInfo()!.source !== 'environment')));
   async function finishOnboarding() {
@@ -549,7 +537,7 @@ function App() {
     ? <Onboarding status={onboardingStatus()!} onDone={() => void finishOnboarding()} onAdvanced={() => { setSkipWizard(true); setActiveTab('settings'); }} />
     : keyLocked() ? <UnlockScreen repo={managedRepo()} onUnlocked={() => { setKeyLocked(false); void reloadEntries(); }} />
     : <main class="shell">
-    {navPosition() === 'top' && appBar()}
+    {appBar()}
     <div class="app-body">
     {activeTab() === 'generator' && <div class="generator">
       <Card padding="sm" class="gen-output" aria-label="Generated password">
@@ -585,11 +573,6 @@ function App() {
       <label class="check"><input type="checkbox" checked={autoSync()} disabled={!git()?.upstream} onChange={event => void changeAutoSync(event.currentTarget.checked)} />Sync automatically</label>
       <p class="hint">{git()?.upstream ? syncDescription() : 'Connect the vault to a remote in Advanced to sync it.'}</p>
       {autoSync() && git()?.upstream && <Button variant="outline" size="sm" disabled={syncState().state === 'syncing'} onClick={() => void runSync()}>Sync now</Button>}
-    </Card>}
-    {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Layout">
-      <h2>Layout</h2>
-      <label class="check"><input type="checkbox" checked={navPosition() === 'bottom'} onChange={event => void changeNavPosition(event.currentTarget.checked ? 'bottom' : 'top')} />Show navigation at the bottom</label>
-      {navError() && <p class="panel-error" role="alert">{navError()}</p>}
     </Card>}
     {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Entry list">
       <h2>Entry list</h2>
@@ -669,7 +652,6 @@ function App() {
     {accountDialog() === 'password' && <ChangePasswordDialog login={account()?.login || ''} minPassword={onboardingStatus()?.minPassword || 12} onClose={() => setAccountDialog('')} />}
     {accountDialog() === 'export' && <ExportKeyDialog onClose={() => setAccountDialog('')} />}
     {accountDialog() === 'kit' && <EmergencyKit login={account()?.login || managedRepo().split('/')[0]} repo={managedRepo()} onClose={() => setAccountDialog('')} />}
-    {navPosition() === 'bottom' && appBar()}
   </main>}</Theme>;
 }
 

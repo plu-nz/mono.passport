@@ -24,7 +24,7 @@ const commands: Record<string, [string, string[]]> = {
   create_vault_with_github: ['CreateVaultWithGitHub', ['password', 'repoName']], restore_vault_from_github: ['RestoreVaultFromGitHub', ['fullName', 'password']],
   unlock: ['Unlock', ['password']], change_master_password: ['ChangeMasterPassword', ['current', 'next']], export_key: ['ExportKey', ['password']], lock: ['Lock', []], key_unlocked: ['KeyUnlocked', []],
   sync_state: ['SyncState', []], sync_now: ['SyncNow', []], auto_sync: ['AutoSync', []], set_auto_sync: ['SetAutoSync', ['on']],
-  system_theme: ['SystemTheme', []], refresh_seconds: ['RefreshSeconds', []], set_refresh_seconds: ['SetRefreshSeconds', ['seconds']], nav_position: ['NavPosition', []], set_nav_position: ['SetNavPosition', ['position']],
+  system_theme: ['SystemTheme', []], refresh_seconds: ['RefreshSeconds', []], set_refresh_seconds: ['SetRefreshSeconds', ['seconds']],
 };
 
 export function invoke<T = unknown>(command: string, args: Record<string, unknown> = {}): Promise<T> {
