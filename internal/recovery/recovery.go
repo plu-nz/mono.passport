@@ -144,4 +144,3 @@ func (h header) aead(password []byte) (cipher.AEAD, error) {
 	defer clear(key)
 	return chacha20poly1305.NewX(key)
 }
-
