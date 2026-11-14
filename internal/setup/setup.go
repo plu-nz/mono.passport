@@ -1,19 +1,18 @@
 package setup
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/plu-nz/mono.passage/internal/github"
 	"github.com/plu-nz/mono.passage/internal/gitvault"
+	"github.com/plu-nz/mono.passage/internal/gpgkey"
 )
 
 type GPGKey struct {
@@ -52,8 +51,6 @@ var RefreshChoices = []int{0, 5, 15, 30, 60, 300}
 const DefaultNavPosition = "top"
 
 var NavPositions = []string{"top", "bottom"}
-
-var fingerprintPattern = regexp.MustCompile(`^[a-fA-F0-9]{40}([a-fA-F0-9]{24})?$`)
 
 func settingsPath() (string, error) {
 	base := os.Getenv("XDG_CONFIG_HOME")
@@ -325,7 +322,7 @@ func CreateVault(path, keyID string) (VaultInfo, error) {
 	if err := allowed(); err != nil {
 		return VaultInfo{}, err
 	}
-	if !fingerprintPattern.MatchString(keyID) {
+	if !gpgkey.ValidFingerprint(keyID) {
 		return VaultInfo{}, errors.New("Select a valid GPG private key")
 	}
 	found := false
@@ -392,7 +389,7 @@ func parseGPGKeys(out []byte) []GPGKey {
 	}
 	filtered := []GPGKey{}
 	for _, k := range keys {
-		if fingerprintPattern.MatchString(k.ID) {
+		if gpgkey.ValidFingerprint(k.ID) {
 			if k.Label == "" {
 				k.Label = k.ID
 			}
@@ -436,7 +433,7 @@ func validatedUID(name, email string) (string, error) {
 }
 func generateKey(uid string) (string, error) {
 	out, err := exec.Command("gpg", "--batch", "--pinentry-mode", "ask", "--status-fd", "1", "--quick-generate-key", uid, "default", "default", "never").Output()
-	fp := createdFingerprint(out)
+	fp := gpgkey.CreatedFingerprint(out)
 	if err != nil {
 		if fp != "" {
 			return "", fmt.Errorf("GPG did not complete generation; the key %s may exist. Check pinentry", fp)
@@ -447,18 +444,6 @@ func generateKey(uid string) (string, error) {
 		return "", errors.New("GPG finished without reporting a fingerprint; check your keys")
 	}
 	return fp, nil
-}
-func createdFingerprint(out []byte) string {
-	for _, line := range bytes.Split(out, []byte{'\n'}) {
-		const prefix = "[GNUPG:] KEY_CREATED "
-		if bytes.HasPrefix(line, []byte(prefix)) {
-			f := strings.Fields(string(line))
-			if len(f) > 0 && fingerprintPattern.MatchString(f[len(f)-1]) {
-				return f[len(f)-1]
-			}
-		}
-	}
-	return ""
 }
 func createKeyAndVaultWith(path, uid string, generate func(string) (string, error)) (CreatedKeyVault, error) {
 	fp, err := generate(uid)
