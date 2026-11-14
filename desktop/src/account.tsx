@@ -4,18 +4,21 @@
 import { createEffect, createSignal, onCleanup, type JSX } from 'solid-js';
 import { Button, TextField } from '@plunz/storybook';
 import { invoke } from './service';
+import { backdropClose } from './modal';
 import { checkStrength, minScore, strengthLabels, suggestPassphrase, type Strength } from './strength';
 
 const message = (cause: unknown) => String(cause).replace(/^Error:\s*/, '');
 
-// Modal opens as a native dialog; Escape or the close button dismiss it.
+// Modal opens as a native dialog; Escape, the close button or a click on the
+// backdrop dismiss it, except while it is busy.
 function Modal(props: { title: string; onClose: () => void; busy?: boolean; class?: string; children: JSX.Element }) {
   const open = (dialog: HTMLDialogElement) => queueMicrotask(() => {
     if (!dialog.isConnected || dialog.open) return;
     dialog.showModal();
     dialog.querySelector<HTMLInputElement>('input')?.focus();
   });
-  return <dialog class={`modal ${props.class || ''}`} ref={open} aria-label={props.title} onCancel={event => { event.preventDefault(); if (!props.busy) props.onClose(); }}>
+  const backdrop = backdropClose(() => { if (!props.busy) props.onClose(); });
+  return <dialog class={`modal ${props.class || ''}`} ref={open} aria-label={props.title} {...backdrop} onCancel={event => { event.preventDefault(); if (!props.busy) props.onClose(); }}>
     <div class="modal-heading"><h2>{props.title}</h2><button class="icon-button" aria-label="Close" disabled={props.busy} onClick={props.onClose}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button></div>
     {props.children}
   </dialog>;

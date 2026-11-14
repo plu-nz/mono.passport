@@ -4,6 +4,7 @@ import { Clipboard, Events } from '@wailsio/runtime';
 import { Button, Card, TextField, Theme } from '@plunz/storybook';
 import '@plunz/storybook/styles.css';
 import { invoke } from './service';
+import { backdropClose } from './modal';
 import { ChangePasswordDialog, EmergencyKit, ExportKeyDialog } from './account';
 import { GitHubSignIn, Onboarding, UnlockScreen, type GitHubAccount, type OnboardingStatus } from './onboarding';
 import { generatePassword, loadOptions, maxLength, maxMinimum, minLength, normalize, saveOptions, specialChars, type GeneratorOptions } from './generator';
@@ -403,8 +404,8 @@ function App() {
     <div class="form-actions"><Button disabled={entryBusy() || !entryId().trim() || !entryPassword()} onClick={() => void saveEntry()}>{entryBusy() ? 'Saving…' : 'Save'}</Button><Button variant="ghost" disabled={entryBusy()} onClick={cancelEntry}>Cancel</Button></div>
   </div>;
 
-  // New entry opens as a modal over the current tab. Escape or Cancel closes
-  // it; clicking outside does not, so a half-filled form is not lost.
+  // New entry opens as a modal over the current tab. Escape, Cancel or a click
+  // on the backdrop closes it, except while saving.
   const openModal = (dialog: HTMLDialogElement) => queueMicrotask(() => {
     if (!dialog.isConnected || dialog.open) return;
     dialog.showModal();
@@ -668,7 +669,7 @@ function App() {
         {syncState().state !== 'off' && <button class={`footer-sync ${syncState().state}`} title={syncState().message || syncDescription()} onClick={() => setActiveTab('settings')}><span class="status-dot" />{syncLabels[syncState().state]}</button>}
       </span>
     </footer>
-    {creating() && <dialog class="modal" ref={openModal} aria-labelledby="new-entry-title" onCancel={event => { event.preventDefault(); cancelEntry(); }}>
+    {creating() && <dialog class="modal" ref={openModal} aria-labelledby="new-entry-title" {...backdropClose(cancelEntry)} onCancel={event => { event.preventDefault(); cancelEntry(); }}>
       <div class="modal-heading"><h2 id="new-entry-title">New entry</h2><button class="icon-button" aria-label="Close" disabled={entryBusy()} onClick={cancelEntry}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button></div>
       {entryForm()}
       {error() && <p class="panel-error" role="alert">{error()}</p>}
