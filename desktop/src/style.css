@@ -112,8 +112,13 @@ code, pre { font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", mon
 .field-card { margin-bottom: 12px; }
 .field-card label { display: block; margin-bottom: 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .field-value { overflow-wrap: anywhere; font-size: 13px; }
-.password { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.password code { overflow-wrap: anywhere; }
+.field-row { display: flex; align-items: center; gap: 8px; }
+.field-row > .field-value { flex: 1; min-width: 0; }
+code.field-value { overflow-wrap: anywhere; }
+.field-actions { display: flex; flex: none; gap: 2px; margin: -6px -6px -6px 0; }
+.field-action { width: 32px; height: 32px; color: var(--muted); }
+.field-action:hover:not(:disabled) { color: var(--text); }
+.field-action .nav-icon { width: 18px; height: 18px; }
 .field-card pre { margin: 0; color: var(--code); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
 .entry-form { display: flex; flex-direction: column; gap: 16px; }
 .form-actions { display: flex; gap: 8px; }

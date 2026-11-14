@@ -5,7 +5,7 @@ const commands: Record<string, [string, string[]]> = {
   vault_state: ['VaultState', []], vault_info: ['VaultInfo', []], gpg_keys: ['GPGKeys', []],
   select_vault: ['SelectVault', ['path']], clone_vault: ['CloneVault', ['path', 'url']],
   create_vault: ['CreateVault', ['path', 'keyId']], create_key_and_vault: ['CreateKeyAndVault', ['path', 'name', 'email']],
-  list_entries: ['ListEntries', []], read_entry: ['ReadEntry', ['id']], generate_totp: ['GenerateTOTP', ['id']],
+  list_entries: ['ListEntries', []], read_entry: ['ReadEntry', ['id']], generate_totp: ['GenerateTOTP', ['id']], open_url: ['OpenURL', ['url']],
   create_login_entry: ['CreateLoginEntry', ['id', 'password', 'username', 'url', 'details']],
   update_login_entry: ['UpdateLoginEntry', ['id', 'password', 'username', 'url', 'details', 'expectedHash']],
   create_entry: ['CreateEntry', ['id', 'content']], update_entry: ['UpdateEntry', ['id', 'content', 'expectedHash']],

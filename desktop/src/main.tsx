@@ -359,6 +359,36 @@ function App() {
     saveOptions(genOptions());
     regenerate();
   });
+  // Entry field actions: copy (a copied password leaves the clipboard after
+  // 45 seconds, as `pass -c` does), show or hide the password, open the URL.
+  const icons = {
+    copy: <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>,
+    check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+    eye: <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
+    eyeOff: <><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.6 3.5M6.6 6.6C3.6 8.5 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="M3 3l18 18" /></>,
+    external: <><path d="M14 4h6v6" /><path d="M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></>,
+  };
+  const fieldAction = (label: string, onClick: () => void, paths: JSX.Element) => <button class="icon-button field-action" aria-label={label} title={label} onClick={onClick}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths}</svg></button>;
+  const [copiedField, setCopiedField] = createSignal('');
+  let copiedTimer: number | undefined;
+  let secretClipboardTimer: number | undefined;
+  async function copyField(field: string, value: string, secretValue = false) {
+    try {
+      await Clipboard.SetText(value);
+      setCopiedField(field);
+      window.clearTimeout(copiedTimer);
+      copiedTimer = window.setTimeout(() => setCopiedField(''), 1500);
+      if (secretValue) {
+        window.clearTimeout(secretClipboardTimer);
+        secretClipboardTimer = window.setTimeout(async () => {
+          try { if (await Clipboard.Text() === value) await Clipboard.SetText(''); } catch { /* clipboard unavailable */ }
+        }, 45_000);
+      }
+    } catch (cause) { setError(`Copy failed: ${cause}`); }
+  }
+  async function openUrl(url: string) {
+    try { await invoke('open_url', { url }); } catch (cause) { setError(String(cause)); }
+  }
   let clipboardTimer: number | undefined;
   async function copyGenerated() {
     const value = generated();
@@ -662,7 +692,7 @@ function App() {
       <section class="detail" aria-label="Entry details">{editing() && !creating() ? <>
         <h2>Edit {selected()}</h2>
         {entryForm()}
-      </> : selected() ? <><div class="detail-heading"><div><small>VAULT ENTRY</small><h2>{selected()}</h2></div><Button variant="outline" size="sm" onClick={startEdit} disabled={!secret()}>Edit</Button></div>{secret() ? <>{secret().username && <Card padding="sm" class="field-card"><label>Username</label><div class="field-value">{secret().username}</div></Card>}{secret().urls.length > 0 && <Card padding="sm" class="field-card"><label>URL</label><div class="field-value">{secret().urls[0]}</div></Card>}<Card padding="sm" class="field-card"><label>Password</label><div class="password"><code>{visible() ? secret().password : '••••••••••••'}</code><Button variant="ghost" size="sm" onClick={() => setVisible(!visible())}>{visible() ? 'Hide' : 'Show'}</Button></div></Card>{secret().details && <Card padding="sm" class="field-card"><label>Other fields</label><pre>{displayDetails(secret().details)}</pre></Card>}<Button variant="outline" size="sm" disabled={entryBusy()} onClick={() => void deleteEntry()}>Delete</Button><Button variant="outline" size="sm" onClick={() => void showTotp()}>Generate TOTP code</Button>{totp() && <p role="status">TOTP code: <code>{totp().code}</code> · valid for up to {Math.max(0, Math.ceil(totp().validUntil - Date.now() / 1000))} s</p>}<p class="hint">The secret disappears from the screen after 30 seconds. gpg-agent may keep the key cached.</p></> : <p>Open the entry to view its contents.</p>}</> : <p>Select an entry.</p>}</section></div>
+      </> : selected() ? <><div class="detail-heading"><div><small>VAULT ENTRY</small><h2>{selected()}</h2></div><Button variant="outline" size="sm" onClick={startEdit} disabled={!secret()}>Edit</Button></div>{secret() ? <>{secret().username && <Card padding="sm" class="field-card"><label>Username</label><div class="field-row"><div class="field-value">{secret().username}</div><div class="field-actions">{fieldAction(copiedField() === 'username' ? 'Copied' : 'Copy username', () => void copyField('username', secret().username!), copiedField() === 'username' ? icons.check : icons.copy)}</div></div></Card>}{secret().urls.length > 0 && <Card padding="sm" class="field-card"><label>URL</label><div class="field-row"><div class="field-value">{secret().urls[0]}</div><div class="field-actions">{fieldAction(copiedField() === 'url' ? 'Copied' : 'Copy URL', () => void copyField('url', secret().urls[0]), copiedField() === 'url' ? icons.check : icons.copy)}{/^https?:\/\//i.test(secret().urls[0]) && fieldAction('Open in browser', () => void openUrl(secret().urls[0]), icons.external)}</div></div></Card>}<Card padding="sm" class="field-card"><label>Password</label><div class="field-row"><code class="field-value">{visible() ? secret().password : '••••••••••••'}</code><div class="field-actions">{fieldAction(visible() ? 'Hide password' : 'Show password', () => setVisible(!visible()), visible() ? icons.eyeOff : icons.eye)}{fieldAction(copiedField() === 'password' ? 'Copied' : 'Copy password', () => void copyField('password', secret().password, true), copiedField() === 'password' ? icons.check : icons.copy)}</div></div></Card>{secret().details && <Card padding="sm" class="field-card"><label>Other fields</label><pre>{displayDetails(secret().details)}</pre></Card>}<Button variant="outline" size="sm" disabled={entryBusy()} onClick={() => void deleteEntry()}>Delete</Button><Button variant="outline" size="sm" onClick={() => void showTotp()}>Generate TOTP code</Button>{totp() && <p role="status">TOTP code: <code>{totp().code}</code> · valid for up to {Math.max(0, Math.ceil(totp().validUntil - Date.now() / 1000))} s</p>}<p class="hint">The secret disappears from the screen after 30 seconds. gpg-agent may keep the key cached.</p></> : <p>Open the entry to view its contents.</p>}</> : <p>Select an entry.</p>}</section></div>
     </>)}
     {error() && !creating() && <p class="error" role="alert">{error()}</p>}
     </div>

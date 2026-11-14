@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"net/url"
 	"os/exec"
 	"regexp"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/plu-nz/mono.passport/internal/pairing"
 	"github.com/plu-nz/mono.passport/internal/setup"
 	"github.com/plu-nz/mono.passport/internal/vault"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // DesktopService exposes a fixed set of Passport actions to the embedded UI.
@@ -118,6 +120,17 @@ func (*DesktopService) RemoveEntry(id, expectedHash string) error {
 	scheduleSync()
 	return nil
 }
+
+// OpenURL opens an entry's web address in the default browser. Only http and
+// https links are opened, so an entry cannot launch other handlers.
+func (*DesktopService) OpenURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+		return errors.New("Only http and https links can be opened")
+	}
+	return application.Get().Browser.OpenURL(u.String())
+}
+
 func (*DesktopService) GenerateTOTP(id string) (otp.Code, error) {
 	v, err := vault.OpenEnv()
 	if err != nil {
