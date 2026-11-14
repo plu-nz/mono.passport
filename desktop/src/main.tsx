@@ -522,7 +522,7 @@ function App() {
     const nav = <nav class="app-nav" aria-label="Sections">{tabs.map(tabButton)}</nav>;
     return <div class="app-bar">{nav}{toolbar}</div>;
   };
-  // A one-line summary of the vault for the Settings footer.
+  // A one-line summary of the vault for the app footer.
   const vaultStatus = createMemo(() => {
     const kind = state().kind;
     const where = managedRepo() ? `github.com/${managedRepo()}` : vaultInfo()?.path || '';
@@ -649,14 +649,14 @@ function App() {
     </>)}
     {error() && !creating() && <p class="error" role="alert">{error()}</p>}
     </div>
-    {activeTab() === 'settings' && <footer class="settings-footer" aria-label="Passport status">
+    <footer class="app-footer" aria-label="Passport status">
       <span>Passport {appVersion}</span>
-      <span class="settings-footer-status" role="status">
+      <span class="app-footer-status" role="status">
         <span class={`status-dot${vaultStatus().ready ? ' ready' : ''}`} />{vaultStatus().label}
-        {vaultStatus().where && <span class="settings-footer-where" title={vaultStatus().where}>{vaultStatus().where}</span>}
+        {vaultStatus().where && <span class="app-footer-where" title={vaultStatus().where}>{vaultStatus().where}</span>}
         {syncState().state !== 'off' && <span>· {syncLabels[syncState().state]}</span>}
       </span>
-    </footer>}
+    </footer>
     {creating() && <dialog class="modal" ref={openModal} aria-labelledby="new-entry-title" onCancel={event => { event.preventDefault(); cancelEntry(); }}>
       <div class="modal-heading"><h2 id="new-entry-title">New entry</h2><button class="icon-button" aria-label="Close" disabled={entryBusy()} onClick={cancelEntry}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button></div>
       {entryForm()}

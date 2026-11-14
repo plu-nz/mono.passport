@@ -243,8 +243,8 @@ code, pre { font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", mon
 .wizard-advanced > summary { color: var(--muted); font-size: 13px; cursor: pointer; }
 .wizard-advanced .plz-field { margin-top: 10px; }
 
-/* Settings footer: version and vault status, always in view while in Settings. */
-.settings-footer { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 22px; border-top: 1px solid var(--line); color: var(--muted); background: var(--page); font-size: 12px; }
-.settings-footer-status { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.settings-footer-where { overflow: hidden; color: var(--muted); font-family: ui-monospace, "JetBrains Mono", monospace; text-overflow: ellipsis; white-space: nowrap; opacity: .8; }
-@media (max-width: 560px) { .settings-footer-where { display: none; } }
+/* App footer: version and vault status, always in view. */
+.app-footer { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 22px; border-top: 1px solid var(--line); color: var(--muted); background: var(--page); font-size: 12px; }
+.app-footer-status { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.app-footer-where { overflow: hidden; color: var(--muted); font-family: ui-monospace, "JetBrains Mono", monospace; text-overflow: ellipsis; white-space: nowrap; opacity: .8; }
+@media (max-width: 560px) { .app-footer-where { display: none; } }
