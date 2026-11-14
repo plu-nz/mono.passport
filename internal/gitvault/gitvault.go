@@ -76,8 +76,13 @@ func (g *GitVault) Root() string { return g.root }
 func (g *GitVault) git(args ...string) ([]byte, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = g.root
-	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=/bin/false")
+	cmd.Env = gitEnv()
 	return cmd.Output()
+}
+
+// gitEnv keeps Git from prompting: credentials come only from configured helpers.
+func gitEnv() []string {
+	return append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=/bin/false")
 }
 func (g *GitVault) output(args ...string) (string, error) {
 	out, err := g.git(args...)
