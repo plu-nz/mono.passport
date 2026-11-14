@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -36,6 +37,10 @@ const MinPasswordLength = 12
 
 // RepoName is the default name of the private vault repository.
 const RepoName = ".passport"
+
+// VaultTopic marks a repository as a Passport vault, so restore finds it
+// whatever its name.
+const VaultTopic = "passport-vault"
 
 // onboardingState is saved after each completed step, never with secrets, so
 // an interrupted create or restore resumes instead of starting over.
@@ -148,7 +153,14 @@ func recipients(path string) []string {
 // vault at the default path, a private GitHub repository holding it, and the
 // sealed recovery copy, then unlocks the key. exe is the Passport executable
 // Git will call for credentials.
-func CreateWithGitHub(ctx context.Context, client *ghauth.Client, account ghauth.Account, password []byte, exe string, progress Progress) (VaultInfo, error) {
+//
+// repoName chooses the repository; empty means RepoName, trying RepoName-2 …
+// when it is taken. A chosen name is used as is.
+func CreateWithGitHub(ctx context.Context, client *ghauth.Client, account ghauth.Account, password []byte, repoName, exe string, progress Progress) (VaultInfo, error) {
+	repoName = strings.TrimSpace(repoName)
+	if repoName != "" && !ghauth.ValidRepoName(repoName) {
+		return VaultInfo{}, errors.New("Use only letters, digits, dots, hyphens and underscores in the repository name")
+	}
 	if err := allowed(); err != nil {
 		return VaultInfo{}, err
 	}
@@ -223,7 +235,7 @@ func CreateWithGitHub(ctx context.Context, client *ghauth.Client, account ghauth
 
 	progress(StepRepository)
 	if state.Repo == "" {
-		repo, err := createRepo(ctx, client, account.Token)
+		repo, err := createRepo(ctx, client, account.Token, repoName)
 		if err != nil {
 			return VaultInfo{}, err
 		}
@@ -275,14 +287,33 @@ func CreateWithGitHub(ctx context.Context, client *ghauth.Client, account ghauth
 	return VaultInfoCurrent()
 }
 
-// createRepo tries .passport, then .passport-2 … -9.
-func createRepo(ctx context.Context, client *ghauth.Client, token string) (ghauth.Repo, error) {
+// createRepo creates the chosen name, or tries .passport, then .passport-2 …
+// -9, and tags the repository with VaultTopic.
+func createRepo(ctx context.Context, client *ghauth.Client, token, chosen string) (ghauth.Repo, error) {
+	repo, err := createRepoNamed(ctx, client, token, chosen)
+	if err != nil {
+		return repo, err
+	}
+	// Without the topic, restore still finds names containing "passport".
+	client.SetTopics(ctx, token, repo.FullName, []string{VaultTopic})
+	return repo, nil
+}
+
+func createRepoNamed(ctx context.Context, client *ghauth.Client, token, chosen string) (ghauth.Repo, error) {
+	const description = "Passport vault: entries encrypted with GPG, compatible with pass"
+	if chosen != "" {
+		repo, err := client.CreatePrivateRepo(ctx, token, chosen, description)
+		if errors.Is(err, ghauth.ErrRepoExists) {
+			return repo, fmt.Errorf("A repository named %s already exists on GitHub. Choose another name", chosen)
+		}
+		return repo, err
+	}
 	for i := 1; i <= 9; i++ {
 		name := RepoName
 		if i > 1 {
 			name = fmt.Sprintf("%s-%d", RepoName, i)
 		}
-		repo, err := client.CreatePrivateRepo(ctx, token, name, "Passport vault: entries encrypted with GPG, compatible with pass")
+		repo, err := client.CreatePrivateRepo(ctx, token, name, description)
 		if errors.Is(err, ghauth.ErrRepoExists) {
 			continue
 		}
@@ -292,8 +323,8 @@ func createRepo(ctx context.Context, client *ghauth.Client, token string) (ghaut
 }
 
 // FindGitHubVaults lists the account's private repositories that hold a
-// Passport recovery copy. Only names containing "passport" are checked, so the
-// lookup stays a handful of requests.
+// Passport recovery copy. Only repositories tagged VaultTopic or named with
+// "passport" are checked, so the lookup stays a handful of requests.
 func FindGitHubVaults(ctx context.Context, client *ghauth.Client, token string) ([]ghauth.Repo, error) {
 	repos, err := client.OwnedRepos(ctx, token)
 	if err != nil {
@@ -301,7 +332,7 @@ func FindGitHubVaults(ctx context.Context, client *ghauth.Client, token string) 
 	}
 	found := []ghauth.Repo{}
 	for _, repo := range repos {
-		if !repo.Private || !strings.Contains(strings.ToLower(repo.Name), "passport") {
+		if !repo.Private || !(slices.Contains(repo.Topics, VaultTopic) || strings.Contains(strings.ToLower(repo.Name), "passport")) {
 			continue
 		}
 		ok, err := client.HasBranch(ctx, token, repo.FullName, gitvault.RecoveryBranch)

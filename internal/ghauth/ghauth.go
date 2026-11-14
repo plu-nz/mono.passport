@@ -15,6 +15,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -216,23 +217,45 @@ func (c *Client) User(ctx context.Context, token string) (User, error) {
 }
 
 type Repo struct {
-	Name          string `json:"name"`
-	FullName      string `json:"fullName"`
-	CloneURL      string `json:"cloneUrl"`
-	Private       bool   `json:"private"`
-	DefaultBranch string `json:"defaultBranch"`
+	Name          string   `json:"name"`
+	FullName      string   `json:"fullName"`
+	CloneURL      string   `json:"cloneUrl"`
+	Private       bool     `json:"private"`
+	DefaultBranch string   `json:"defaultBranch"`
+	Topics        []string `json:"topics"`
 }
 
 type apiRepo struct {
-	Name          string `json:"name"`
-	FullName      string `json:"full_name"`
-	CloneURL      string `json:"clone_url"`
-	Private       bool   `json:"private"`
-	DefaultBranch string `json:"default_branch"`
+	Name          string   `json:"name"`
+	FullName      string   `json:"full_name"`
+	CloneURL      string   `json:"clone_url"`
+	Private       bool     `json:"private"`
+	DefaultBranch string   `json:"default_branch"`
+	Topics        []string `json:"topics"`
 }
 
 func (r apiRepo) repo() Repo {
-	return Repo{Name: r.Name, FullName: r.FullName, CloneURL: r.CloneURL, Private: r.Private, DefaultBranch: r.DefaultBranch}
+	return Repo{Name: r.Name, FullName: r.FullName, CloneURL: r.CloneURL, Private: r.Private, DefaultBranch: r.DefaultBranch, Topics: r.Topics}
+}
+
+var repoNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,100}$`)
+
+// ValidRepoName follows GitHub's rules: letters, digits, ".", "-" and "_",
+// at most 100 characters, and not "." or "..".
+func ValidRepoName(name string) bool {
+	return repoNamePattern.MatchString(name) && name != "." && name != ".." && !strings.HasSuffix(strings.ToLower(name), ".git")
+}
+
+// SetTopics replaces the topics of fullName ("owner/repo").
+func (c *Client) SetTopics(ctx context.Context, token, fullName string, topics []string) error {
+	status, err := c.api(ctx, token, http.MethodPut, "/repos/"+escapePath(fullName)+"/topics", map[string]any{"names": topics}, nil)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("GitHub did not tag the repository (%d)", status)
+	}
+	return nil
 }
 
 // OwnedRepos lists the repositories the account owns, up to 1000.

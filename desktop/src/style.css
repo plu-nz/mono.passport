@@ -242,3 +242,6 @@ code, pre { font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", mon
   .print-area { position: fixed; inset: 0; padding: 32px; }
   .kit-blank { border-color: #000; }
 }
+.wizard-advanced { margin-top: 14px; }
+.wizard-advanced > summary { color: var(--muted); font-size: 13px; cursor: pointer; }
+.wizard-advanced .plz-field { margin-top: 10px; }

@@ -199,7 +199,8 @@ func emitStep(step string) {
 // same directory and key.
 var onboarding sync.Mutex
 
-func (*DesktopService) CreateVaultWithGitHub(password string) (setup.VaultInfo, error) {
+// repoName is optional; empty creates the default .passport repository.
+func (*DesktopService) CreateVaultWithGitHub(password, repoName string) (setup.VaultInfo, error) {
 	if !onboarding.TryLock() {
 		return setup.VaultInfo{}, errors.New("Passport is already setting up a vault")
 	}
@@ -216,7 +217,7 @@ func (*DesktopService) CreateVaultWithGitHub(password string) (setup.VaultInfo, 
 	defer clear(secret)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	return setup.CreateWithGitHub(ctx, githubClient, a, secret, exe, emitStep)
+	return setup.CreateWithGitHub(ctx, githubClient, a, secret, repoName, exe, emitStep)
 }
 
 func (*DesktopService) RestoreVaultFromGitHub(fullName, password string) (setup.VaultInfo, error) {

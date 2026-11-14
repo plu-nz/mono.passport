@@ -186,5 +186,5 @@ Each phase is one or more commits on `main`, following the repository's usual fl
 | D4 | Minimum password strength | **zxcvbn score ≥ 3 and ≥ 12 characters**, with the diceware suggestion one click away. |
 | D5 | No Secret Service available | **Fallback to a `0600` file with a warning**, like `gh`. |
 | D6 | Auto-lock | Use gpg-agent's cache TTL; add a Passport *Lock after N minutes* setting that calls Lock. |
-| D7 | Repository name | `.passport`, like a dotfile in the home directory; on a clash Passport tries `.passport-2` … `.passport-9`. |
+| D7 | Repository name | `.passport`, like a dotfile in the home directory; on a clash Passport tries `.passport-2` … `.passport-9`. **Advanced options** on the password screen accept another name, used as is. Every vault repository gets the topic `passport-vault`, so restore finds it whatever its name. |
 | D8 | Who registers the OAuth App | **Done**: OAuth App "Passport" under `plu-nz`, device flow enabled, no client secret. Client ID `Ov23liE8ep7OS2M8Hfsy` (public; it goes into the code). |

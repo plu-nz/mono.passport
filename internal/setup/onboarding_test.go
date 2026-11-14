@@ -62,6 +62,9 @@ func fakeGitHub(t *testing.T, root string) (*ghauth.Client, *int) {
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]any{"name": RepoName, "full_name": "octo/" + RepoName, "clone_url": cloneURL, "private": true})
 	})
+	mux.HandleFunc("PUT /repos/octo/.passport/topics", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]any{"names": []string{VaultTopic}})
+	})
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 	return &ghauth.Client{HTTP: server.Client(), APIBase: server.URL, WebBase: server.URL}, &created
@@ -89,10 +92,10 @@ func TestCreateOnOneComputerRestoreOnAnother(t *testing.T) {
 	progress := func(step string) { steps = append(steps, step) }
 
 	computer(t, root, "first")
-	if _, err := CreateWithGitHub(context.Background(), client, account, []byte("short"), "/opt/passport", progress); err == nil {
+	if _, err := CreateWithGitHub(context.Background(), client, account, []byte("short"), "", "/opt/passport", progress); err == nil {
 		t.Fatal("a short master password was accepted")
 	}
-	info, err := CreateWithGitHub(context.Background(), client, account, password, "/opt/passport", progress)
+	info, err := CreateWithGitHub(context.Background(), client, account, password, "", "/opt/passport", progress)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +171,7 @@ func TestCreateOnOneComputerRestoreOnAnother(t *testing.T) {
 	if out, err := insert.CombinedOutput(); err != nil {
 		t.Fatalf("pass insert on the second computer: %v %s", err, out)
 	}
-	if _, err := CreateWithGitHub(context.Background(), client, account, password, "/opt/passport", progress); err == nil {
+	if _, err := CreateWithGitHub(context.Background(), client, account, password, "", "/opt/passport", progress); err == nil {
 		t.Fatal("create overwrote an existing vault")
 	}
 
@@ -227,4 +230,70 @@ func run(t *testing.T, dir, name string, args ...string) string {
 		t.Fatalf("%s %v: %v %s", name, args, err, out)
 	}
 	return string(out)
+}
+
+func TestCustomRepoNameAndTopicDiscovery(t *testing.T) {
+	var tagged []string
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /user/repos", func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		json.NewDecoder(r.Body).Decode(&body)
+		name := body["name"].(string)
+		if name == "taken" {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]any{"name": name, "full_name": "octo/" + name, "clone_url": "https://github.com/octo/" + name + ".git", "private": true})
+	})
+	mux.HandleFunc("PUT /repos/octo/{repo}/topics", func(w http.ResponseWriter, r *http.Request) {
+		tagged = append(tagged, r.PathValue("repo"))
+		json.NewEncoder(w).Encode(map[string]any{"names": []string{VaultTopic}})
+	})
+	mux.HandleFunc("GET /user/repos", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode([]map[string]any{
+			{"name": "secrets", "full_name": "octo/secrets", "private": true, "topics": []string{VaultTopic}},
+			{"name": "notes", "full_name": "octo/notes", "private": true},
+			{"name": "old-passport", "full_name": "octo/old-passport", "private": true},
+		})
+	})
+	mux.HandleFunc("GET /repos/octo/{repo}/branches/passport-recovery", func(w http.ResponseWriter, r *http.Request) {
+		if r.PathValue("repo") == "notes" {
+			t.Error("checked a repository that is neither tagged nor named passport")
+		}
+		if r.PathValue("repo") == "old-passport" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"name": "passport-recovery"})
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	client := &ghauth.Client{HTTP: server.Client(), APIBase: server.URL, WebBase: server.URL}
+	ctx := context.Background()
+
+	repo, err := createRepo(ctx, client, "token", "secrets")
+	if err != nil || repo.FullName != "octo/secrets" || len(tagged) != 1 || tagged[0] != "secrets" {
+		t.Fatalf("createRepo(secrets) = %+v, %v; tagged %v", repo, err, tagged)
+	}
+	if _, err := createRepo(ctx, client, "token", "taken"); err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("createRepo(taken) = %v", err)
+	}
+	found, err := FindGitHubVaults(ctx, client, "token")
+	if err != nil || len(found) != 1 || found[0].FullName != "octo/secrets" {
+		t.Fatalf("FindGitHubVaults() = %+v, %v", found, err)
+	}
+	for _, name := range []string{"", ".", "..", "a b", "x.git", strings.Repeat("a", 101), "a/b"} {
+		if ghauth.ValidRepoName(name) {
+			t.Errorf("ValidRepoName(%q) = true", name)
+		}
+	}
+	for _, name := range []string{".passport", "my-vault_2", "Vault.backup"} {
+		if !ghauth.ValidRepoName(name) {
+			t.Errorf("ValidRepoName(%q) = false", name)
+		}
+	}
+	if _, err := CreateWithGitHub(ctx, client, account, []byte("correct horse battery staple"), "bad name", "/opt/passport", func(string) {}); err == nil || !strings.Contains(err.Error(), "repository name") {
+		t.Fatalf("CreateWithGitHub(bad name) = %v", err)
+	}
 }

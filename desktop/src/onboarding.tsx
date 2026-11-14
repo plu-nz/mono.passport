@@ -94,6 +94,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
   const [step, setStep] = createSignal('');
   const [doneRepo, setDoneRepo] = createSignal('');
   const [kit, setKit] = createSignal(false);
+  const [repoName, setRepoName] = createSignal('');
 
   const loadAccount = async () => {
     try { setAccount(await invoke<GitHubAccount>('github_account')); }
@@ -135,7 +136,9 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
 
   const longEnough = () => [...password()].length >= props.status.minPassword;
   const strongEnough = () => (strength()?.score ?? 0) >= minScore;
-  const canCreate = () => longEnough() && strongEnough() && password() === confirm() && understood() && !/[\r\n]/.test(password());
+  // Mirrors ghauth.ValidRepoName; empty means the default .passport.
+  const repoNameValid = () => { const name = repoName().trim(); return !name || (/^[A-Za-z0-9._-]{1,100}$/.test(name) && name !== '.' && name !== '..' && !/\.git$/i.test(name)); };
+  const canCreate = () => longEnough() && strongEnough() && password() === confirm() && understood() && !/[\r\n]/.test(password()) && repoNameValid();
 
   function suggest() {
     const phrase = suggestPassphrase();
@@ -149,7 +152,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
     setStep('');
     setScreen('progress');
     try {
-      if (mode() === 'create') await invoke('create_vault_with_github', { password: password() });
+      if (mode() === 'create') await invoke('create_vault_with_github', { password: password(), repoName: repoName().trim() });
       else await invoke('restore_vault_from_github', { fullName: repo(), password: password() });
       const status = await invoke<OnboardingStatus>('onboarding_status');
       setDoneRepo(status.managedRepo);
@@ -229,6 +232,11 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
       {show() && password() && <p class="hint">Write it down somewhere safe until you know it by heart.</p>}
       <label class="check"><input type="checkbox" checked={understood()} onChange={event => setUnderstood(event.currentTarget.checked)} />I understand that nobody can recover this password if I forget it, not even Passport.</label>
       <p class="hint">Turn on two-factor authentication on GitHub: your encrypted vault lives there.</p>
+      <details class="wizard-advanced" open={!!repoName()}>
+        <summary>Advanced options</summary>
+        <TextField id="repo-name" label="Repository name" value={repoName()} onInput={event => setRepoName(event.currentTarget.value)} placeholder=".passport" autocomplete="off" spellcheck={false} />
+        <p class="hint">{repoNameValid() ? `Passport creates the private repository github.com/${account()?.login || 'you'}/${repoName().trim() || '.passport'}.` : 'Use only letters, digits, dots, hyphens and underscores.'}</p>
+      </details>
       <div class="onboarding-actions"><Button disabled={!canCreate()} onClick={() => void submit()}>Create vault</Button></div>
       {errorLine()}
     </Shell>}
