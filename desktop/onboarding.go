@@ -160,6 +160,8 @@ type OnboardingStatus struct {
 	Pending     string `json:"pending"`
 	MinPassword int    `json:"minPassword"`
 	VaultPath   string `json:"vaultPath"`
+	// ManagedRepo is the GitHub repository of a vault Passage created or restored.
+	ManagedRepo string `json:"managedRepo"`
 }
 
 func (*DesktopService) OnboardingStatus() (OnboardingStatus, error) {
@@ -168,7 +170,11 @@ func (*DesktopService) OnboardingStatus() (OnboardingStatus, error) {
 		return OnboardingStatus{}, err
 	}
 	path, _ := setup.DefaultVaultPath()
-	return OnboardingStatus{Pending: pending, MinPassword: setup.MinPasswordLength, VaultPath: path}, nil
+	repo, err := setup.GitHubRepo()
+	if err != nil {
+		return OnboardingStatus{}, err
+	}
+	return OnboardingStatus{Pending: pending, MinPassword: setup.MinPasswordLength, VaultPath: path, ManagedRepo: repo}, nil
 }
 
 func (*DesktopService) AbandonOnboarding() error { return setup.AbandonOnboarding() }

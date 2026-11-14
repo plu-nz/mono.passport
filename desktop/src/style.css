@@ -177,3 +177,50 @@ code, pre { font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", mon
   .workspace { grid-template-columns: 1fr; }
   .workspace nav { max-height: 240px; overflow: auto; }
 }
+
+/* First-run setup and the unlock screen: one centered card per step. */
+.onboarding { display: grid; place-items: center; min-height: 100vh; padding: 24px 16px; }
+.onboarding-card { width: min(100%, 520px); padding: 28px 28px 24px; }
+.onboarding-card h1 { margin: 0 0 12px; font-size: 22px; }
+.onboarding-card p { color: var(--muted); line-height: 1.5; }
+.onboarding-card p strong { color: var(--text); }
+.onboarding-card .plz-field { margin-top: 14px; }
+.onboarding-card .check { margin-top: 16px; flex-direction: row-reverse; justify-content: flex-end; line-height: 1.4; }
+.onboarding-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 4px; }
+.onboarding-back { margin: -8px 0 8px -4px; padding: 4px; border: 0; color: var(--muted); background: transparent; font-size: 13px; }
+.onboarding-back:hover { color: var(--text); }
+.link { margin-top: 14px; padding: 0; border: 0; color: var(--accent); background: transparent; font-size: 13px; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.device { margin-top: 8px; }
+.device-code { display: block; margin: 8px 0 4px; padding: 14px; border: 1px solid var(--line); background: var(--input); font-size: 28px; font-weight: 700; letter-spacing: .12em; text-align: center; user-select: all; }
+.choices { display: grid; gap: 8px; margin: 12px 0; }
+.choice { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); cursor: pointer; }
+.choice:has(input:checked) { border-color: var(--accent); }
+.choice input { accent-color: var(--accent); }
+.strength { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 12px; }
+.strength-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 160px; }
+.strength-bar span { height: 6px; background: var(--raised); }
+.strength[data-score="0"] .strength-bar span:nth-child(-n+1),
+.strength[data-score="1"] .strength-bar span:nth-child(-n+1) { background: var(--danger); }
+.strength[data-score="2"] .strength-bar span:nth-child(-n+2) { background: var(--pending); }
+.strength[data-score="3"] .strength-bar span:nth-child(-n+3),
+.strength[data-score="4"] .strength-bar span { background: var(--ready); }
+.progress-steps { display: grid; gap: 10px; margin: 16px 0; padding: 0; list-style: none; color: var(--muted); }
+.progress-steps li { display: flex; align-items: center; gap: 10px; }
+.progress-steps li.active, .progress-steps li.done { color: var(--text); }
+.progress-mark { display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid var(--control-line); font-size: 12px; }
+.progress-steps li.done .progress-mark { border-color: var(--ready); color: var(--page); background: var(--ready); }
+.progress-steps li.active .progress-mark { border-color: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { background: color-mix(in srgb, var(--accent) 35%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .progress-steps li.active .progress-mark { animation: none; background: var(--accent); } }
+
+/* Sync indicator in the toolbar; it opens Settings. */
+.sync-pill { display: flex; flex: none; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--plz-radius); color: var(--muted); background: transparent; font-size: 12px; white-space: nowrap; }
+.sync-pill.synced .status-dot { background: var(--ready); }
+.sync-pill.syncing .status-dot { background: var(--accent); }
+.sync-pill.attention { border-color: var(--danger); color: var(--text); }
+.sync-pill.attention .status-dot { background: var(--danger); }
+
+/* Settings > Advanced keeps manual vault and Git setup out of the way. */
+.advanced { margin-bottom: 16px; }
+.advanced > summary { padding: 12px 0; color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.notice .plz-button { margin-left: 12px; }

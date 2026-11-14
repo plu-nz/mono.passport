@@ -32,7 +32,7 @@ function pools(options: GeneratorOptions) {
 
 // randomIndex returns a uniform integer in [0, max) by rejecting the values
 // that would make the modulo uneven.
-function randomIndex(max: number): number {
+export function randomIndex(max: number): number {
   const limit = Math.floor(0x1_0000_0000 / max) * max;
   const buffer = new Uint32Array(1);
   do crypto.getRandomValues(buffer); while (buffer[0] >= limit);

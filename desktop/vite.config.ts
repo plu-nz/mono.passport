@@ -12,4 +12,7 @@ export default defineConfig({
     watch: { ignored: ['**/build/**'] },
   },
   clearScreen: false,
+  // zxcvbn's dictionaries (about 1.2 MB) load lazily when a master password
+  // is typed; they ship inside the app, so the size is not a download cost.
+  build: { chunkSizeWarningLimit: 1500 },
 });

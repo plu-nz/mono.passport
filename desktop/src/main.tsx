@@ -1,9 +1,10 @@
 import { createSignal, createEffect, createMemo, onCleanup, onMount, type JSX } from 'solid-js';
 import { render } from 'solid-js/web';
-import { Clipboard } from '@wailsio/runtime';
+import { Clipboard, Events } from '@wailsio/runtime';
 import { Button, Card, TextField, Theme } from '@plunz/storybook';
 import '@plunz/storybook/styles.css';
 import { invoke } from './service';
+import { GitHubSignIn, Onboarding, UnlockScreen, type GitHubAccount, type OnboardingStatus } from './onboarding';
 import { generatePassword, loadOptions, maxLength, maxMinimum, minLength, normalize, saveOptions, specialChars, type GeneratorOptions } from './generator';
 import { version as appVersion } from '../package.json';
 import type { VaultState } from '@passage/core';
@@ -15,6 +16,8 @@ type Secret = { password: string; details: string; other_details: string; userna
 type GitStatus = { branch: string; upstream: string | null; dirty: boolean; ahead: number; behind: number };
 type GithubStatus = { cli_installed: boolean; login: string | null; vault_git_configured: boolean };
 type Pairing = { origin: string; installationId: string };
+type SyncState = { state: 'off' | 'syncing' | 'synced' | 'offline' | 'attention'; message?: string; at?: string };
+const syncLabels: Record<SyncState['state'], string> = { off: '', syncing: 'Syncing…', synced: 'Synced', offline: 'Offline', attention: 'Needs attention' };
 
 type Tab = 'vault' | 'generator' | 'settings';
 
@@ -77,6 +80,13 @@ function App() {
   const [refreshError, setRefreshError] = createSignal('');
   const [navPosition, setNavPosition] = createSignal<'top' | 'bottom'>('top');
   const [navError, setNavError] = createSignal('');
+  const [onboardingStatus, setOnboardingStatus] = createSignal<OnboardingStatus | null>(null);
+  const [skipWizard, setSkipWizard] = createSignal(false);
+  const [keyLocked, setKeyLocked] = createSignal(false);
+  const [account, setAccount] = createSignal<GitHubAccount | null>(null);
+  const [accountError, setAccountError] = createSignal('');
+  const [syncState, setSyncState] = createSignal<SyncState>({ state: 'off' });
+  const [autoSync, setAutoSync] = createSignal(false);
   const requestNumber = { current: 0 };
 
   const refresh = async () => {
@@ -115,6 +125,7 @@ function App() {
         setTotp(null);
         setVisible(false);
       }
+      void checkLock();
     } catch {
       // Keep the last list; the next tick or an explicit action reports errors.
     }
@@ -175,6 +186,69 @@ function App() {
     catch (cause) { setBrowserLocked(null); setBrowserLockError(String(cause)); }
   };
   onMount(() => { void refreshBrowserLock(); });
+
+  // A vault Passage created or restored is opened with the master password in
+  // the app; other vaults keep using pinentry.
+  const managedRepo = () => onboardingStatus()?.managedRepo || '';
+  const refreshOnboarding = async () => {
+    try { setOnboardingStatus(await invoke<OnboardingStatus>('onboarding_status')); } catch (cause) { setVaultError(String(cause)); }
+  };
+  const refreshAccount = async () => {
+    try { setAccount(await invoke<GitHubAccount>('github_account')); setAccountError(''); } catch (cause) { setAccountError(String(cause)); }
+  };
+  const clearSecrets = () => {
+    requestNumber.current += 1;
+    setSecret(null); setTotp(null); setVisible(false); setEditing(false); setCreating(false); setEntryPassword(''); setEntryDetails('');
+  };
+  // checkLock returns true when the managed vault's key needs the master password.
+  const checkLock = async () => {
+    if (!managedRepo()) { setKeyLocked(false); return false; }
+    try {
+      const locked = !(await invoke<boolean>('key_unlocked'));
+      if (locked && !keyLocked()) clearSecrets();
+      setKeyLocked(locked);
+      return locked;
+    } catch { return false; }
+  };
+  async function lockNow() {
+    try { await invoke('lock'); clearSecrets(); setKeyLocked(true); } catch (cause) { setError(String(cause)); }
+  }
+  async function signOut() {
+    if (!window.confirm('Sign out of GitHub on this computer? Sync stops until you sign in again.')) return;
+    try { await invoke('github_sign_out'); await refreshAccount(); } catch (cause) { setAccountError(String(cause)); }
+  }
+  const runSync = async () => {
+    if (!autoSync() || state().kind !== 'available') return;
+    try { setSyncState(await invoke<SyncState>('sync_now')); } catch (cause) { setSyncState({ state: 'attention', message: String(cause) }); }
+    await reloadEntries();
+    await refreshGit();
+  };
+  const changeAutoSync = async (on: boolean) => {
+    try {
+      await invoke('set_auto_sync', { on });
+      setAutoSync(on);
+      setSyncState(await invoke<SyncState>('sync_state'));
+      if (on) await runSync();
+    } catch (cause) { setGitError(String(cause)); }
+  };
+  onCleanup(Events.On('passage:sync', event => setSyncState(event.data as SyncState)));
+  onMount(async () => {
+    await refreshOnboarding();
+    await refreshAccount();
+    try { setAutoSync(await invoke<boolean>('auto_sync')); setSyncState(await invoke<SyncState>('sync_state')); } catch { /* sync stays off */ }
+    await checkLock();
+    await runSync();
+  });
+  createEffect(() => {
+    if (!autoSync()) return;
+    const timer = setInterval(() => { void runSync(); }, 60_000);
+    onCleanup(() => clearInterval(timer));
+  });
+  const syncDescription = () => {
+    const current = syncState();
+    const at = current.at ? ` at ${new Date(current.at).toLocaleTimeString()}` : '';
+    return current.state === 'synced' ? `Synced${at}.` : current.state === 'syncing' ? 'Syncing…' : current.state === 'off' ? 'Passage syncs only when you pull or push.' : current.message || syncLabels[current.state];
+  };
   createEffect(() => {
     if (!secret()) return;
     const timer = window.setTimeout(() => { setSecret(null); setTotp(null); setVisible(false); setEditing(false); setEntryPassword(''); setEntryDetails(''); }, 30_000);
@@ -200,6 +274,7 @@ function App() {
     setEditing(false);
     setCreating(false);
     setError('');
+    if (await checkLock()) { setSelected(null); return; }
     try {
       const result = await invoke<Secret>('read_entry', { id });
       if (request === requestNumber.current) setSecret(result);
@@ -450,14 +525,28 @@ function App() {
   // the top the order is mirrored so the navigation sits at the window edge.
   // The memo keeps vault refreshes from rebuilding the bar (and dropping focus)
   // while someone is typing.
-  const unavailable = createMemo(() => state().kind === 'unavailable');
+  const unavailable = createMemo(() => state().kind !== 'available');
   const tabButton = (tab: (typeof tabs)[number]) => <button class={activeTab() === tab.id ? 'active' : ''} aria-current={activeTab() === tab.id ? 'page' : undefined} onClick={() => setActiveTab(tab.id)}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{tab.icon()}</svg><span>{tab.label}</span></button>;
   const appBar = () => {
-    const toolbar = activeTab() === 'vault' && <div class="toolbar"><input type="search" aria-label="Search entries" placeholder="Search vault…" value={query()} disabled={unavailable()} onInput={event => setQuery(event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Escape') setQuery(''); }} /><Button class="toolbar-new" disabled={unavailable()} onClick={startCreate}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New</Button></div>;
+    const toolbar = activeTab() === 'vault' && <div class="toolbar"><input type="search" aria-label="Search entries" placeholder="Search vault…" value={query()} disabled={unavailable()} onInput={event => setQuery(event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Escape') setQuery(''); }} />{syncState().state !== 'off' && <button class={`sync-pill ${syncState().state}`} title={syncState().message || syncDescription()} onClick={() => setActiveTab('settings')}><span class="status-dot" />{syncLabels[syncState().state]}</button>}{managedRepo() && <button class="icon-button" aria-label="Lock" title="Lock" onClick={() => void lockNow()}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg></button>}<Button class="toolbar-new" disabled={unavailable()} onClick={startCreate}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New</Button></div>;
     const nav = <nav class="app-nav" aria-label="Sections">{tabs.map(tabButton)}</nav>;
     return <div class={`app-bar ${navPosition()}`}>{navPosition() === 'top' ? <>{nav}{toolbar}</> : <>{toolbar}{nav}</>}</div>;
   };
-  return <Theme class="passage" accent="red" shape="square"><main class="shell">
+  const showWizard = createMemo(() => !skipWizard() && onboardingStatus() !== null && (state().kind === 'onboarding' || (state().kind === 'unavailable' && !!vaultInfo() && !vaultInfo()!.initialized && vaultInfo()!.source !== 'environment')));
+  async function finishOnboarding() {
+    setKeyLocked(false);
+    await refreshOnboarding();
+    await refresh();
+    await refreshVaultInfo();
+    await refreshAccount();
+    try { setAutoSync(await invoke<boolean>('auto_sync')); setSyncState(await invoke<SyncState>('sync_state')); } catch { /* sync stays off */ }
+    await refreshGit();
+    setActiveTab('vault');
+  }
+  return <Theme class="passage" accent="red" shape="square">{showWizard()
+    ? <Onboarding status={onboardingStatus()!} onDone={() => void finishOnboarding()} onAdvanced={() => { setSkipWizard(true); setActiveTab('settings'); }} />
+    : keyLocked() ? <UnlockScreen repo={managedRepo()} onUnlocked={() => { setKeyLocked(false); void reloadEntries(); }} />
+    : <main class="shell">
     {navPosition() === 'top' && appBar()}
     <div class="app-body">
     {activeTab() === 'generator' && <div class="generator">
@@ -480,6 +569,48 @@ function App() {
         {stepper('minSpecial', 'Minimum special', () => genOptions().special)}
       </Card>
     </div>}
+    {activeTab() === 'settings' && (account()?.signedIn || managedRepo()) && <Card class="panel vault-panel" aria-label="Account">
+      <h2>Account</h2>
+      {account()?.signedIn ? <p class="status-line"><span class="status-dot ready" />GitHub: <strong>@{account().login}</strong></p> : <p>Not signed in to GitHub. Sync is paused until you sign in again.</p>}
+      {managedRepo() && <p class="hint">Vault repository: <code>{managedRepo()}</code></p>}
+      {account()?.insecure && <p class="panel-error">No system keyring was found, so the GitHub sign-in is saved in a file only your user can read.</p>}
+      {account()?.signedIn ? <div class="panel-actions"><Button variant="outline" size="sm" onClick={() => void signOut()}>Sign out</Button><Button variant="ghost" size="sm" onClick={() => void invoke('open_revoke_page')}>Remove Passage's access on GitHub</Button></div> : <GitHubSignIn label="Sign in again" onSignedIn={signed => { setAccount(signed); void runSync(); }} />}
+      {accountError() && <p class="panel-error" role="alert">{accountError()}</p>}
+    </Card>}
+    {activeTab() === 'settings' && state().kind === 'available' && <Card class="panel vault-panel" aria-label="Security and sync">
+      <h2>Security and sync</h2>
+      {managedRepo() && <><div class="panel-actions"><Button variant="outline" size="sm" onClick={() => void lockNow()}>Lock now</Button></div><p class="hint">Locking forgets the master password for Passage, the browser extension and <code>pass</code> in the terminal.</p></>}
+      <label class="check"><input type="checkbox" checked={autoSync()} disabled={!git()?.upstream} onChange={event => void changeAutoSync(event.currentTarget.checked)} />Sync automatically</label>
+      <p class="hint">{git()?.upstream ? syncDescription() : 'Connect the vault to a remote in Advanced to sync it.'}</p>
+      {autoSync() && git()?.upstream && <Button variant="outline" size="sm" disabled={syncState().state === 'syncing'} onClick={() => void runSync()}>Sync now</Button>}
+    </Card>}
+    {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Layout">
+      <h2>Layout</h2>
+      <label class="check"><input type="checkbox" checked={navPosition() === 'bottom'} onChange={event => void changeNavPosition(event.currentTarget.checked ? 'bottom' : 'top')} />Show navigation at the bottom</label>
+      {navError() && <p class="panel-error" role="alert">{navError()}</p>}
+    </Card>}
+    {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Entry list">
+      <h2>Entry list</h2>
+      <label for="refresh-seconds">Refresh automatically</label>
+      <div class="panel-actions"><select id="refresh-seconds" value={String(refreshSeconds())} onChange={event => void changeRefreshSeconds(Number(event.currentTarget.value))}>
+        {refreshChoices.map(([seconds, label]) => <option value={String(seconds)}>{label}</option>)}
+      </select></div>
+      <p class="hint">Reloads the list so entries added or removed with <code>pass</code> or Git appear without reopening Passage.</p>
+      {refreshError() && <p class="panel-error" role="alert">{refreshError()}</p>}
+    </Card>}
+    {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Browser extensions">
+      <h2>Browser extensions</h2>
+      <p>{browserLocked() === null ? 'Access status unavailable.' : browserLocked() ? 'Extension access locked.' : 'Extension access unlocked.'} Locking does not clear the GPG cache or prevent using pass in a terminal.</p>
+      <div class="panel-actions"><Button variant="outline" size="sm" disabled={browserLocked() !== false} onClick={() => void changeBrowserLock(true)}>Lock extensions</Button><Button variant="outline" size="sm" disabled={browserLocked() !== true} onClick={() => void changeBrowserLock(false)}>Unlock extensions</Button><Button variant="outline" size="sm" onClick={() => void refreshBrowserLock()}>Check lock status</Button></div>
+      {browserLockError() && <p class="panel-error" role="alert">{browserLockError()}</p>}
+      <p>Enter the code shown in the extension to authorize this installation.</p>
+      <div class="panel-actions"><input aria-label="Pairing code" value={pairingCode()} maxLength={12} onInput={event => setPairingCode(event.currentTarget.value)} placeholder="12-character code" /><Button variant="outline" size="sm" disabled={!/^[a-f0-9]{12}$/i.test(pairingCode().trim())} onClick={() => void approvePairing()}>Authorize</Button></div>
+      {pairings().map(pairing => <div class="pairing"><span>{pairing.origin}<small>{pairing.installationId}</small></span><Button variant="outline" size="sm" onClick={() => void revokePairing(pairing)}>Revoke</Button></div>)}
+      <Button variant="outline" size="sm" onClick={() => void refreshPairings()}>Refresh list</Button>
+      {pairingError() && <p class="panel-error" role="alert">{pairingError()}</p>}
+    </Card>}
+    {activeTab() === 'settings' && <details class="advanced" open={!managedRepo()}>
+      <summary>Advanced</summary>
     {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Vault setup">
       <h2>Vault</h2>
       <p class="status-line"><span class={state().kind === 'available' ? 'status-dot ready' : 'status-dot'} />{state().kind === 'available' ? 'Vault available' : 'Vault unavailable'}</p>
@@ -499,20 +630,6 @@ function App() {
       <Button variant="outline" size="sm" onClick={() => void refreshVaultInfo()} disabled={vaultBusy()}>Check keys and vault</Button>
       {vaultError() && <p class="panel-error" role="alert">{vaultError()}</p>}
     </Card>}
-    {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Layout">
-      <h2>Layout</h2>
-      <label class="check"><input type="checkbox" checked={navPosition() === 'bottom'} onChange={event => void changeNavPosition(event.currentTarget.checked ? 'bottom' : 'top')} />Show navigation at the bottom</label>
-      {navError() && <p class="panel-error" role="alert">{navError()}</p>}
-    </Card>}
-    {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Entry list">
-      <h2>Entry list</h2>
-      <label for="refresh-seconds">Refresh automatically</label>
-      <div class="panel-actions"><select id="refresh-seconds" value={String(refreshSeconds())} onChange={event => void changeRefreshSeconds(Number(event.currentTarget.value))}>
-        {refreshChoices.map(([seconds, label]) => <option value={String(seconds)}>{label}</option>)}
-      </select></div>
-      <p class="hint">Reloads the list so entries added or removed with <code>pass</code> or Git appear without reopening Passage.</p>
-      {refreshError() && <p class="panel-error" role="alert">{refreshError()}</p>}
-    </Card>}
     {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Git sync">
       <h2>Git sync</h2>
       <h3>GitHub</h3>
@@ -528,22 +645,12 @@ function App() {
       {gitError() && <p class="panel-error" role="alert">{gitError()}</p>}
       <p class="hint">Configure the remote through Git or  <code>pass git</code>. Conflicts and local changes prevent automatic sync.</p>
     </Card>}
-    {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Browser extensions">
-      <h2>Browser extensions</h2>
-      <p>{browserLocked() === null ? 'Access status unavailable.' : browserLocked() ? 'Extension access locked.' : 'Extension access unlocked.'} Locking does not clear the GPG cache or prevent using pass in a terminal.</p>
-      <div class="panel-actions"><Button variant="outline" size="sm" disabled={browserLocked() !== false} onClick={() => void changeBrowserLock(true)}>Lock extensions</Button><Button variant="outline" size="sm" disabled={browserLocked() !== true} onClick={() => void changeBrowserLock(false)}>Unlock extensions</Button><Button variant="outline" size="sm" onClick={() => void refreshBrowserLock()}>Check lock status</Button></div>
-      {browserLockError() && <p class="panel-error" role="alert">{browserLockError()}</p>}
-      <p>Enter the code shown in the extension to authorize this installation.</p>
-      <div class="panel-actions"><input aria-label="Pairing code" value={pairingCode()} maxLength={12} onInput={event => setPairingCode(event.currentTarget.value)} placeholder="12-character code" /><Button variant="outline" size="sm" disabled={!/^[a-f0-9]{12}$/i.test(pairingCode().trim())} onClick={() => void approvePairing()}>Authorize</Button></div>
-      {pairings().map(pairing => <div class="pairing"><span>{pairing.origin}<small>{pairing.installationId}</small></span><Button variant="outline" size="sm" onClick={() => void revokePairing(pairing)}>Revoke</Button></div>)}
-      <Button variant="outline" size="sm" onClick={() => void refreshPairings()}>Refresh list</Button>
-      {pairingError() && <p class="panel-error" role="alert">{pairingError()}</p>}
-    </Card>}
+    </details>}
     {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="About">
       <h2>About</h2>
       <p class="hint">Passage {appVersion}</p>
     </Card>}
-    {activeTab() === 'vault' && (state().kind === 'unavailable' ? <section class="notice">{(state() as {kind: "unavailable"; reason: string}).reason}</section> : <>
+    {activeTab() === 'vault' && (state().kind !== 'available' ? <section class="notice">{state().kind === 'onboarding' ? 'Setting up the vault was interrupted.' : (state() as { reason: string }).reason}{(state().kind === 'onboarding' || (vaultInfo() && !vaultInfo().initialized && vaultInfo().source !== 'environment')) && <Button size="sm" onClick={() => setSkipWizard(false)}>{state().kind === 'onboarding' ? 'Continue setup' : 'Set up with GitHub'}</Button>}</section> : <>
       <div class="workspace"><nav aria-label="Vault entries">{filtered().length ? filtered().map(entry => <button class={selected() === entry.id ? 'entry selected' : 'entry'} onClick={() => void openEntry(entry.id)}><span class="entry-icon" aria-hidden="true">{entry.title.slice(0, 2).toUpperCase()}</span><span class="entry-text"><strong>{entry.title}</strong><small>{entry.id}</small></span><span class="entry-chevron" aria-hidden="true">›</span></button>) : <p>No entries found.</p>}</nav>
       <section class="detail" aria-label="Entry details">{editing() && !creating() ? <>
         <h2>Edit {selected()}</h2>
@@ -558,7 +665,7 @@ function App() {
       {error() && <p class="panel-error" role="alert">{error()}</p>}
     </dialog>}
     {navPosition() === 'bottom' && appBar()}
-  </main></Theme>;
+  </main>}</Theme>;
 }
 
 render(() => <App />, document.getElementById('root')!);

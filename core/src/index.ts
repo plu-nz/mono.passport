@@ -8,6 +8,8 @@ export interface VaultEntry {
 
 export type VaultState =
   | { kind: 'unavailable'; reason: string }
+  // An interrupted first-run setup; reason is "create" or "restore".
+  | { kind: 'onboarding'; reason: string }
   | { kind: 'locked' }
   | { kind: 'available' };
 
