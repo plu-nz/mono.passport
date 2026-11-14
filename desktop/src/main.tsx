@@ -522,6 +522,15 @@ function App() {
     const nav = <nav class="app-nav" aria-label="Sections">{tabs.map(tabButton)}</nav>;
     return <div class="app-bar">{nav}{toolbar}</div>;
   };
+  // A one-line summary of the vault for the Settings footer.
+  const vaultStatus = createMemo(() => {
+    const kind = state().kind;
+    const where = managedRepo() ? `github.com/${managedRepo()}` : vaultInfo()?.path || '';
+    if (kind === 'onboarding') return { label: 'Setup interrupted', where: '', ready: false };
+    if (kind !== 'available') return { label: 'No vault', where: '', ready: false };
+    if (managedRepo()) return { label: keyLocked() ? 'Vault locked' : 'Vault unlocked', where, ready: !keyLocked() };
+    return { label: 'Vault available', where, ready: true };
+  });
   const showWizard = createMemo(() => !skipWizard() && onboardingStatus() !== null && (state().kind === 'onboarding' || (state().kind === 'unavailable' && !!vaultInfo() && !vaultInfo()!.initialized && vaultInfo()!.source !== 'environment')));
   async function finishOnboarding() {
     setKeyLocked(false);
@@ -631,10 +640,6 @@ function App() {
       <p class="hint">Configure the remote through Git or  <code>pass git</code>. Conflicts and local changes prevent automatic sync.</p>
     </Card>}
     </details>}
-    {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="About">
-      <h2>About</h2>
-      <p class="hint">Passport {appVersion}</p>
-    </Card>}
     {activeTab() === 'vault' && (state().kind !== 'available' ? <section class="notice">{state().kind === 'onboarding' ? 'Setting up the vault was interrupted.' : (state() as { reason: string }).reason}{(state().kind === 'onboarding' || (vaultInfo() && !vaultInfo().initialized && vaultInfo().source !== 'environment')) && <Button size="sm" onClick={() => setSkipWizard(false)}>{state().kind === 'onboarding' ? 'Continue setup' : 'Set up with GitHub'}</Button>}</section> : <>
       <div class="workspace"><nav aria-label="Vault entries">{filtered().length ? filtered().map(entry => <button class={selected() === entry.id ? 'entry selected' : 'entry'} onClick={() => void openEntry(entry.id)}><span class="entry-icon" aria-hidden="true">{entry.title.slice(0, 2).toUpperCase()}</span><span class="entry-text"><strong>{entry.title}</strong><small>{entry.id}</small></span><span class="entry-chevron" aria-hidden="true">›</span></button>) : <p>No entries found.</p>}</nav>
       <section class="detail" aria-label="Entry details">{editing() && !creating() ? <>
@@ -644,6 +649,14 @@ function App() {
     </>)}
     {error() && !creating() && <p class="error" role="alert">{error()}</p>}
     </div>
+    {activeTab() === 'settings' && <footer class="settings-footer" aria-label="Passport status">
+      <span>Passport {appVersion}</span>
+      <span class="settings-footer-status" role="status">
+        <span class={`status-dot${vaultStatus().ready ? ' ready' : ''}`} />{vaultStatus().label}
+        {vaultStatus().where && <span class="settings-footer-where" title={vaultStatus().where}>{vaultStatus().where}</span>}
+        {syncState().state !== 'off' && <span>· {syncLabels[syncState().state]}</span>}
+      </span>
+    </footer>}
     {creating() && <dialog class="modal" ref={openModal} aria-labelledby="new-entry-title" onCancel={event => { event.preventDefault(); cancelEntry(); }}>
       <div class="modal-heading"><h2 id="new-entry-title">New entry</h2><button class="icon-button" aria-label="Close" disabled={entryBusy()} onClick={cancelEntry}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button></div>
       {entryForm()}
