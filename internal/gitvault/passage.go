@@ -80,6 +80,12 @@ func (g *GitVault) UsesPassageHelper() (string, bool) {
 	return "", false
 }
 
+// OriginURL returns the URL of the origin remote, if there is one.
+func (g *GitVault) OriginURL() (string, bool) {
+	out, ok := g.tryOutput("remote", "get-url", "origin")
+	return strings.TrimSpace(out), ok
+}
+
 func (g *GitVault) syncRemote() (string, error) {
 	branch, err := g.output("symbolic-ref", "--quiet", "--short", "HEAD")
 	if err == nil {

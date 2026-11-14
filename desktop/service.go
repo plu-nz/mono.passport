@@ -22,6 +22,9 @@ type VaultState struct {
 }
 
 func (*DesktopService) VaultState() VaultState {
+	if pending, err := setup.OnboardingPending(); err == nil && pending != "" {
+		return VaultState{Kind: "onboarding", Reason: pending}
+	}
 	if err := exec.Command("pass", "--version").Run(); err != nil {
 		return VaultState{Kind: "unavailable", Reason: "GNU pass is not installed or is not in the PATH."}
 	}
@@ -65,35 +68,55 @@ func (*DesktopService) CreateLoginEntry(id, password, username, url, details str
 	if err != nil {
 		return vault.Secret{}, err
 	}
-	return v.CreateLogin(id, password, username, url, details)
+	secret, err := v.CreateLogin(id, password, username, url, details)
+	if err == nil {
+		scheduleSync()
+	}
+	return secret, err
 }
 func (*DesktopService) UpdateLoginEntry(id, password, username, url, details, expectedHash string) (vault.Secret, error) {
 	v, err := vault.OpenEnv()
 	if err != nil {
 		return vault.Secret{}, err
 	}
-	return v.UpdateLogin(id, password, username, url, details, expectedHash)
+	secret, err := v.UpdateLogin(id, password, username, url, details, expectedHash)
+	if err == nil {
+		scheduleSync()
+	}
+	return secret, err
 }
 func (*DesktopService) CreateEntry(id, content string) error {
 	v, err := vault.OpenEnv()
 	if err != nil {
 		return err
 	}
-	return v.Create(id, content)
+	if err := v.Create(id, content); err != nil {
+		return err
+	}
+	scheduleSync()
+	return nil
 }
 func (*DesktopService) UpdateEntry(id, content, expectedHash string) error {
 	v, err := vault.OpenEnv()
 	if err != nil {
 		return err
 	}
-	return v.Update(id, content, expectedHash)
+	if err := v.Update(id, content, expectedHash); err != nil {
+		return err
+	}
+	scheduleSync()
+	return nil
 }
 func (*DesktopService) RemoveEntry(id, expectedHash string) error {
 	v, err := vault.OpenEnv()
 	if err != nil {
 		return err
 	}
-	return v.Remove(id, expectedHash)
+	if err := v.Remove(id, expectedHash); err != nil {
+		return err
+	}
+	scheduleSync()
+	return nil
 }
 func (*DesktopService) GenerateTOTP(id string) (otp.Code, error) {
 	v, err := vault.OpenEnv()

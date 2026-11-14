@@ -17,6 +17,13 @@ const commands: Record<string, [string, string[]]> = {
   list_pairings: ['ListPairings', []], approve_pairing: ['ApprovePairing', ['code']],
   revoke_pairing: ['RevokePairing', ['origin', 'installationId']], browser_access_state: ['BrowserAccessState', []],
   lock_browser_access: ['LockBrowserAccess', []], unlock_browser_access: ['UnlockBrowserAccess', []],
+  github_account: ['GitHubAccount', []], github_start_sign_in: ['GitHubStartSignIn', []],
+  github_open_verification: ['GitHubOpenVerification', []], github_finish_sign_in: ['GitHubFinishSignIn', []],
+  github_cancel_sign_in: ['GitHubCancelSignIn', []], github_sign_out: ['GitHubSignOut', []], open_revoke_page: ['OpenRevokePage', []],
+  find_github_vaults: ['FindGitHubVaults', []], onboarding_status: ['OnboardingStatus', []], abandon_onboarding: ['AbandonOnboarding', []],
+  create_vault_with_github: ['CreateVaultWithGitHub', ['password']], restore_vault_from_github: ['RestoreVaultFromGitHub', ['fullName', 'password']],
+  unlock: ['Unlock', ['password']], lock: ['Lock', []], key_unlocked: ['KeyUnlocked', []],
+  sync_state: ['SyncState', []], sync_now: ['SyncNow', []], auto_sync: ['AutoSync', []], set_auto_sync: ['SetAutoSync', ['on']],
   system_theme: ['SystemTheme', []], refresh_seconds: ['RefreshSeconds', []], set_refresh_seconds: ['SetRefreshSeconds', ['seconds']], nav_position: ['NavPosition', []], set_nav_position: ['SetNavPosition', ['position']],
 };
 

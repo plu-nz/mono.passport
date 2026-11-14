@@ -36,6 +36,11 @@ type settings struct {
 	VaultPath      string `json:"vaultPath,omitempty"`
 	RefreshSeconds *int   `json:"refreshSeconds,omitempty"`
 	NavPosition    string `json:"navPosition,omitempty"`
+	// GitHubRepo is the "owner/name" of a vault repository Passage created or restored.
+	GitHubRepo string `json:"githubRepo,omitempty"`
+	// AutoSync makes Passage pull and push on its own.
+	AutoSync   bool             `json:"autoSync,omitempty"`
+	Onboarding *onboardingState `json:"onboarding,omitempty"`
 }
 
 // DefaultRefreshSeconds is how often the desktop reloads the entry list when

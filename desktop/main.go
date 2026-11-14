@@ -18,6 +18,8 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "git-credential" {
 		os.Exit(ghauth.CredentialHelper(os.Args[2:], os.Stdin, os.Stdout))
 	}
+	// Keep a Passage-managed vault's credential helper pointing at this binary.
+	go refreshHelper()
 	var window *application.WebviewWindow
 	title := "Passage"
 	var linux application.LinuxOptions
