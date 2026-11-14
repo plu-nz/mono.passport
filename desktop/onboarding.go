@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -180,13 +181,29 @@ func (*DesktopService) OnboardingStatus() (OnboardingStatus, error) {
 func (*DesktopService) AbandonOnboarding() error { return setup.AbandonOnboarding() }
 
 // executable is the path Git will run for credentials. A development build
-// lives in a temporary directory, so startup refreshes the helper path.
+// (`go run`, used by pnpm dev:desktop) lives in a temporary directory that
+// disappears when it exits, so it points Git at the installed passport
+// instead when there is one. Startup refreshes the path either way.
 func executable() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
-	return filepath.EvalSymlinks(exe)
+	if exe, err = filepath.EvalSymlinks(exe); err != nil {
+		return "", err
+	}
+	if temporaryBuild(exe) {
+		if installed, err := exec.LookPath("passport"); err == nil {
+			if installed, err = filepath.EvalSymlinks(installed); err == nil && !temporaryBuild(installed) {
+				return installed, nil
+			}
+		}
+	}
+	return exe, nil
+}
+
+func temporaryBuild(path string) bool {
+	return strings.Contains(path, string(filepath.Separator)+"go-build") || strings.HasPrefix(path, os.TempDir()+string(filepath.Separator))
 }
 
 func emitStep(step string) {

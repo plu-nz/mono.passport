@@ -210,12 +210,13 @@ code, pre { font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", mon
 @keyframes pulse { 50% { background: color-mix(in srgb, var(--accent) 35%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .progress-steps li.active .progress-mark { animation: none; background: var(--accent); } }
 
-/* Sync indicator in the toolbar; it opens Settings. */
-.sync-pill { display: flex; flex: none; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--plz-radius); color: var(--muted); background: transparent; font-size: 12px; white-space: nowrap; }
-.sync-pill.synced .status-dot { background: var(--ready); }
-.sync-pill.syncing .status-dot { background: var(--accent); }
-.sync-pill.attention { border-color: var(--danger); color: var(--text); }
-.sync-pill.attention .status-dot { background: var(--danger); }
+/* Sync state in the footer; it opens Settings. */
+.footer-sync { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; padding: 0 6px; border: 1px solid transparent; color: var(--muted); background: transparent; font-size: 12px; white-space: nowrap; }
+.footer-sync:hover { border-color: var(--line); color: var(--text); }
+.footer-sync.synced .status-dot { background: var(--ready); }
+.footer-sync.syncing .status-dot { background: var(--accent); }
+.footer-sync.attention { color: var(--danger); }
+.footer-sync.attention .status-dot { background: var(--danger); }
 
 /* Settings > Advanced keeps manual vault and Git setup out of the way. */
 .advanced { margin-bottom: 16px; }
