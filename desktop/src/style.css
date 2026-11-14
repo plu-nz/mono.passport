@@ -117,6 +117,8 @@ code, pre { font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", mon
 .field-card pre { margin: 0; color: var(--code); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
 .entry-form { display: flex; flex-direction: column; gap: 16px; }
 .form-actions { display: flex; gap: 8px; }
+/* In dialogs the actions sit on the right, the main one at the edge (markup keeps it first for focus order). */
+.modal .form-actions { flex-direction: row-reverse; justify-content: flex-start; }
 
 /* Settings sections. */
 .panel { margin-bottom: 16px; }
