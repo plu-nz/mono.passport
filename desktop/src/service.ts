@@ -30,5 +30,9 @@ const commands: Record<string, [string, string[]]> = {
 export function invoke<T = unknown>(command: string, args: Record<string, unknown> = {}): Promise<T> {
   const action = commands[command];
   if (!action) return Promise.reject(new Error('Comando desconhecido'));
-  return Call.ByName(`main.DesktopService.${action[0]}`, ...action[1].map(key => args[key])) as Promise<T>;
+  const values = action[1].map(key => args[key]);
+  // A Solid signal passed without calling it would arrive in Go as null.
+  const uncalled = action[1].find((key, index) => typeof values[index] === 'function');
+  if (uncalled) return Promise.reject(new Error(`Bug: ${command}.${uncalled} is a function, not a value`));
+  return Call.ByName(`main.DesktopService.${action[0]}`, ...values) as Promise<T>;
 }

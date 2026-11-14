@@ -321,8 +321,8 @@ function App() {
     try {
       const id = entryId().trim();
       await invoke(creating() ? 'create_login_entry' : 'update_login_entry', {
-        id, password: entryPassword, username: entryUsername, url: entryUrl,
-        details: entryDetails, ...(creating() ? {} : { expectedHash: secret()!.ciphertext_hash })
+        id, password: entryPassword(), username: entryUsername(), url: entryUrl(),
+        details: entryDetails(), ...(creating() ? {} : { expectedHash: secret()!.ciphertext_hash })
       });
       setEntryPassword('');
       setEntryDetails('');
@@ -339,7 +339,7 @@ function App() {
     setEntryBusy(true);
     setError('');
     try {
-      await invoke('remove_entry', { id: selected, expectedHash: secret().ciphertext_hash });
+      await invoke('remove_entry', { id: selected(), expectedHash: secret().ciphertext_hash });
       await refresh();
       await refreshGit();
     } catch (cause) { setError(String(cause)); }
