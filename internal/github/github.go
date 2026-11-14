@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/plu-nz/mono.passage/internal/gitvault"
+	"github.com/plu-nz/mono.passport/internal/gitvault"
 )
 
 type StatusInfo struct {
@@ -67,7 +67,7 @@ func StartLogin() error {
 	if !Status("").CLIInstalled {
 		return errors.New("Install GitHub CLI (gh) to connect your account")
 	}
-	cmd := exec.Command("xdg-terminal-exec", "--title=Passage - GitHub", "--", "gh", "auth", "login", "--hostname", "github.com", "--web", "--git-protocol", "https")
+	cmd := exec.Command("xdg-terminal-exec", "--title=Passport - GitHub", "--", "gh", "auth", "login", "--hostname", "github.com", "--web", "--git-protocol", "https")
 	cmd.Stdin = nil
 	cmd.Stdout = nil
 	cmd.Stderr = nil

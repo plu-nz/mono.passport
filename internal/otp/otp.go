@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/plu-nz/mono.passage/internal/vault"
+	"github.com/plu-nz/mono.passport/internal/vault"
 )
 
 type Code struct {

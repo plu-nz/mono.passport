@@ -14,7 +14,7 @@ func isolateSettings(t *testing.T) (config string, home string) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(root, "config"))
 	t.Setenv("PASSWORD_STORE_DIR", "")
 	os.Unsetenv("PASSWORD_STORE_DIR")
-	return filepath.Join(root, "config", "passage", "settings.json"), home
+	return filepath.Join(root, "config", "passport", "settings.json"), home
 }
 
 func TestRefreshSecondsDefaultsWithoutSettings(t *testing.T) {

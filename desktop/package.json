@@ -1,5 +1,5 @@
 {
-  "name": "@passage/desktop",
+  "name": "@passport/desktop",
   "version": "0.3.0-dev",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@passage/core": "workspace:*",
+    "@passport/core": "workspace:*",
     "@plunz/storybook": "github:plu-nz/lib.storybook#3449d90",
     "@wailsio/runtime": "3.1.0",
     "@zxcvbn-ts/core": "4.2.0",

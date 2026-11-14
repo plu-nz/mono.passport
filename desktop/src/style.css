@@ -1,4 +1,4 @@
-/* Passage follows the PLUNZ design system (@plunz/storybook): square corners,
+/* Passport follows the PLUNZ design system (@plunz/storybook): square corners,
    1px lines, solid/outline/ghost buttons. Colors come from the desktop GTK
    theme (theme.ts); without them, Darkppuccin with the red accent. */
 
@@ -36,15 +36,15 @@
 }
 
 /* Feed the app tokens into the design system (beats its accent selectors). */
-.passage.plz-theme[data-plz-accent] {
+.passport.plz-theme[data-plz-accent] {
   --plz-bg: var(--input); --plz-surface: var(--card); --plz-raised: var(--raised); --plz-line: var(--line);
   --plz-text: var(--text); --plz-muted: var(--muted); --plz-subtle: var(--control-line);
   --plz-accent: var(--accent); --plz-red: var(--danger); --plz-focus: var(--accent);
   min-height: 100vh; color: var(--text); background: var(--page); font-family: inherit; color-scheme: inherit;
 }
-.passage .plz-button--solid { color: var(--on-accent); }
-.passage .plz-button { font-family: inherit; }
-.passage .plz-button--sm { min-height: 36px; }
+.passport .plz-button--solid { color: var(--on-accent); }
+.passport .plz-button { font-family: inherit; }
+.passport .plz-button--sm { min-height: 36px; }
 
 :root { font-family: var(--gtk-font, system-ui, sans-serif); color: var(--text); background: var(--page); font-synthesis: none; }
 * { box-sizing: border-box; }

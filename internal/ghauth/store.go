@@ -26,7 +26,7 @@ type Account struct {
 
 func (a Account) User() User { return User{Login: a.Login, ID: a.ID, Name: a.Name} }
 
-const keyringService = "nz.plu.passage"
+const keyringService = "nz.plu.passport"
 const keyringUser = "github.com"
 
 // ErrSignedOut means no GitHub account is saved.
@@ -41,7 +41,7 @@ func fallbackPath() (string, error) {
 		}
 		base = filepath.Join(home, ".config")
 	}
-	return filepath.Join(base, "passage", "github.json"), nil
+	return filepath.Join(base, "passport", "github.json"), nil
 }
 
 // Save stores the account in Secret Service, or in a 0600 file when there is none.
@@ -120,14 +120,14 @@ func Delete() error {
 	return nil
 }
 
-// RevokeURL is where the user removes Passage's access on GitHub.
+// RevokeURL is where the user removes Passport's access on GitHub.
 func RevokeURL() string {
 	return "https://github.com/settings/connections/applications/" + ClientID
 }
 
-// CredentialHelper implements `passage git-credential <operation>`, a Git
+// CredentialHelper implements `passport git-credential <operation>`, a Git
 // credential helper that answers only HTTPS requests for github.com with the
-// saved token. Store and erase are ignored: the token is managed by Passage.
+// saved token. Store and erase are ignored: the token is managed by Passport.
 func CredentialHelper(args []string, in io.Reader, out io.Writer) int {
 	if len(args) != 1 || args[0] != "get" {
 		return 0

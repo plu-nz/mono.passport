@@ -11,7 +11,7 @@ if (!browserBin || !hostBin || !installer) throw new Error('Provide browser, hos
 const extensionDir = resolve('extension/.output/chrome-mv3');
 if (!existsSync(join(extensionDir, 'manifest.json'))) throw new Error('Run pnpm build:extension first');
 const expectedId = JSON.parse(readFileSync(resolve('extension/identity.json'), 'utf8')).id;
-const root = mkdtempSync(join(tmpdir(), 'passage-browser-test-'));
+const root = mkdtempSync(join(tmpdir(), 'passport-browser-test-'));
 // The copy gives each run a fresh extension ID while preserving shipped permissions.
 const testExtensionDir = join(root, 'extension');
 cpSync(extensionDir, testExtensionDir, { recursive: true });
@@ -43,7 +43,7 @@ const forms = {
 if (!(scenario in forms)) throw new Error(`Unknown scenario: ${scenario}`);
 const server = https.createServer({ cert: readFileSync(cert), key: readFileSync(key) }, (req, res) => {
   res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-  res.end(`<!doctype html><title>Passage test</title>${req.url === '/frame' ? forms.standard : forms[scenario]}<script>document.addEventListener('input',()=>document.body.dataset.inputs=(Number(document.body.dataset.inputs||0)+1));document.addEventListener('change',()=>document.body.dataset.changes=(Number(document.body.dataset.changes||0)+1));</script>`);
+  res.end(`<!doctype html><title>Passport test</title>${req.url === '/frame' ? forms.standard : forms[scenario]}<script>document.addEventListener('input',()=>document.body.dataset.inputs=(Number(document.body.dataset.inputs||0)+1));document.addEventListener('change',()=>document.body.dataset.changes=(Number(document.body.dataset.changes||0)+1));</script>`);
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const site = scenario === 'githubLive' ? 'https://github.com/login' : scenario === 'herokuLive' ? 'https://the-internet.herokuapp.com/login' : `https://localhost:${server.address().port}`;
@@ -52,7 +52,7 @@ writeFileSync(join(store, 'test.gpg'), 'ciphertext');
 writeFileSync(join(bin, 'pass'), `#!/bin/sh\nif [ "$1" = show ]; then printf 'safe\\nlogin: tester\\nurl: ${site}\\n'; exit 0; fi\nexit 1\n`, { mode: 0o700 });
 const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: config, PASSWORD_STORE_DIR: store, PATH: bin + ':' + process.env.PATH };
 const legacyLoad = browserBin.includes('google-chrome-stable') ? [] : ['--disable-extensions-except=' + testExtensionDir, '--load-extension=' + testExtensionDir];
-const child = spawn(browserBin, [...(process.env.PASSAGE_BROWSER_HEADED ? [] : ['--headless=new']), '--no-sandbox', '--disable-gpu', '--no-first-run', '--ignore-certificate-errors', '--enable-unsafe-extension-debugging', '--remote-allow-origins=*', '--remote-debugging-port=0', '--user-data-dir=' + join(root, 'profile'), ...legacyLoad, site], { env, stdio: 'ignore' });
+const child = spawn(browserBin, [...(process.env.PASSPORT_BROWSER_HEADED ? [] : ['--headless=new']), '--no-sandbox', '--disable-gpu', '--no-first-run', '--ignore-certificate-errors', '--enable-unsafe-extension-debugging', '--remote-allow-origins=*', '--remote-debugging-port=0', '--user-data-dir=' + join(root, 'profile'), ...legacyLoad, site], { env, stdio: 'ignore' });
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function cdp(ws, method, params = {}) {
@@ -101,7 +101,7 @@ try {
   let loadedExtensionId;
   for (let i = 0; i < 100; i++) {
     const installed = await cdp(browserWs, 'Extensions.getExtensions');
-    loadedExtensionId = installed.extensions.find(item => item.name === 'Passage')?.id;
+    loadedExtensionId = installed.extensions.find(item => item.name === 'Passport')?.id;
     if (loadedExtensionId) break;
     await delay(100);
   }
@@ -109,7 +109,7 @@ try {
     const loaded = await cdp(browserWs, 'Extensions.loadUnpacked', { path: testExtensionDir });
     loadedExtensionId = loaded.id;
   }
-  if (!loadedExtensionId) throw new Error('The browser did not load Passage');
+  if (!loadedExtensionId) throw new Error('The browser did not load Passport');
   const siteTarget = await cdp(browserWs, 'Target.createTarget', { url: site });
   await cdp(browserWs, 'Target.activateTarget', { targetId: siteTarget.targetId });
   const earlyPage = (await targets()).find(target => target.id === siteTarget.targetId);
@@ -140,13 +140,13 @@ try {
   if (extensionId !== expectedId) throw new Error(`Extension ID changed: ${extensionId}`);
   const installed = spawnSync(installer, [hostBin, extensionId, extensionId], { env, encoding: 'utf8' });
   if (installed.status !== 0) throw new Error(installed.stderr);
-  const chromeManifest = join(config, 'google-chrome', 'NativeMessagingHosts', 'com.plunz.passage.json');
+  const chromeManifest = join(config, 'google-chrome', 'NativeMessagingHosts', 'com.plunz.passport.json');
   for (const dir of [join(home, '.config', 'google-chrome', 'NativeMessagingHosts'), join(home, '.config', 'google-chrome-for-testing', 'NativeMessagingHosts'), join(config, 'chromium', 'NativeMessagingHosts'), join(config, 'google-chrome-for-testing', 'NativeMessagingHosts'), join(root, 'profile', 'NativeMessagingHosts')]) {
     mkdirSync(dir, { recursive: true });
-    cpSync(chromeManifest, join(dir, 'com.plunz.passage.json'));
+    cpSync(chromeManifest, join(dir, 'com.plunz.passport.json'));
   }
   const workerWs = await connect(worker.webSocketDebuggerUrl);
-  const native = payload => evaluate(workerWs, `new Promise((resolve,reject)=>chrome.runtime.sendNativeMessage('com.plunz.passage',${JSON.stringify(payload)},r=>chrome.runtime.lastError?reject(chrome.runtime.lastError.message):resolve(r)))`);
+  const native = payload => evaluate(workerWs, `new Promise((resolve,reject)=>chrome.runtime.sendNativeMessage('com.plunz.passport',${JSON.stringify(payload)},r=>chrome.runtime.lastError?reject(chrome.runtime.lastError.message):resolve(r)))`);
   const pending = await native({ type: 'pair', requestId: 'pair', installationId: 'smoke' });
   if (pending.type !== 'pairPending') throw new Error('Pair request failed');
   const approved = spawnSync(hostBin, ['approve', pending.code], { env, encoding: 'utf8' });

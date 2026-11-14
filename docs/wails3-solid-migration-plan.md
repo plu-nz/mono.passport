@@ -10,18 +10,18 @@
 - Go core in `internal/{vault,setup,gitvault,github,otp,pairing}` shared by desktop and Go host. Rust, Tauri and React sources have been removed.
 - Native Messaging Protocol v1, extension ID and executable names preserved. The host integration test and real tests on Brave and Chrome passed with disposable profiles.
 - Release installation tested twice with a local server and disposable HOME. Checksums, manifest and lock state were preserved.
-- Branch CI passed on Ubuntu 22.04 ([run 43332456516](https://github.com/plu-nz/mono.passage/actions/runs/43332456516)). The Wails desktop and Go host were also installed on the local user; the hashes match the generated binaries and the command `passage` opened the window. The public installer continues to point to the `main` branch release until the migration is integrated and published.
+- Branch CI passed on Ubuntu 22.04 ([run 43332456516](https://github.com/plu-nz/mono.passport/actions/runs/43332456516)). The Wails desktop and Go host were also installed on the local user; the hashes match the generated binaries and the command `passport` opened the window. The public installer continues to point to the `main` branch release until the migration is integrated and published.
 
 Local measurement on 11/12/2026, with warm cache: desktop Go build 2.343 s; TypeScript check and Vite build 2,773 s. The Wails binary was 17,719,872 bytes; the Tauri binary installed before migration is 13,589,880 bytes. These are point-in-time measurements on this computer, not a comparison of clean builds or memory in use.
 
 ## 1. Scope and architectural decisions
 
 - `src/desktop`: Solid + TypeScript + Vite no frontend; Wails 3 + Go no processo desktop.
-- `src/native-host`: separate Go executable, with the same installed name (`passage-native-host`) and the same Native Messaging v1 protocol. Desktop and host import a shared Go core, without relying on an open window.
+- `src/native-host`: separate Go executable, with the same installed name (`passport-native-host`) and the same Native Messaging v1 protocol. Desktop and host import a shared Go core, without relying on an open window.
 - `src/extension`: Keep WXT/TypeScript and published ID. Change only if a protocol adjustment is essential; any incompatible changes require versioned migration and browser testing.
 - `packages/core`: keep TypeScript contracts useful for the extension and UI; generate or check types from the Go→TypeScript bridge to avoid divergent definitions.
-- GNU `pass`, GPG, `pinentry`, `gpg-agent`, Git and `gh` remain responsible for their respective data/authentication. Do not reimplement OpenPGP or import private keys into the Passage process.
-- Preserve `PASSWORD_STORE_DIR`, `~/.password-store`, `XDG_CONFIG_HOME/passage/settings.json`, pairing state, remote URLs, `.gpg` and `.gpg-id` files. Migration should not require reconnecting browser or recreating vault.
+- GNU `pass`, GPG, `pinentry`, `gpg-agent`, Git and `gh` remain responsible for their respective data/authentication. Do not reimplement OpenPGP or import private keys into the Passport process.
+- Preserve `PASSWORD_STORE_DIR`, `~/.password-store`, `XDG_CONFIG_HOME/passport/settings.json`, pairing state, remote URLs, `.gpg` and `.gpg-id` files. Migration should not require reconnecting browser or recreating vault.
 - Keep two executables in the package initially. This preserves the installation and prevents a browser invocation from initializing the graphics runtime. Consolidating into a binary can only be a later, measured and tested optimization.
 - Pin an exact stable version of Wails 3 to `go.mod`, CLI and npm runtime; Do not use `@latest` in the CI. Check the Linux version and dependencies at the beginning of the implementation.
 
@@ -35,7 +35,7 @@ Local measurement on 11/12/2026, with warm cache: desktop Go build 2.343 s; Type
 | Pairing | `pairing.rs`, `src/native-host/src/main.rs` | Approval code, token per installation and vault, revocation, blocking, HTTPS origin, double authorization check. |
 | Extension | `src/extension` | v1 messages, fixed ID, existing pairing, explicit choice before filling out, tab and URL check. |
 | UI | `src/desktop/src/main.tsx`, `style.css` | Current flows and states, secret clearing in 30 s, green visual identity and compact layout. |
-| Distribution | `scripts/*.sh`, `.github/workflows/release-linux.yml` | `~/.local/bin/passage`, host, extension, Brave/Chrome manifests, checksum, installer without clone and update without deleting pairings. |
+| Distribution | `scripts/*.sh`, `.github/workflows/release-linux.yml` | `~/.local/bin/passport`, host, extension, Brave/Chrome manifests, checksum, installer without clone and update without deleting pairings. |
 
 Before porting code, register fixtures **without real secrets** for entry formats, JSON state, host messages, and expected command output/errors. Check all commands exposed in `src/desktop/src-tauri/src/lib.rs` and messages in `src/native-host/src/main.rs`; The table above is a summary, not the exhaustive list.
 
@@ -46,7 +46,7 @@ Before porting code, register fixtures **without real secrets** for entry format
 1. Freeze current behavior with throwaway vault, key, Git remote, and browser profiles. Run current tests and record pre-existing failures.
 2. Measure clean build, backend rebuild, frontend-only build, boot time, package size and Tauri memory usage on the same hardware. Separate hot/cold cache and register toolchain version; the 6 min 30 s compilation made with new cache is just initial data.
 3. Make a minimal Wails 3 + Solid spike on the target Linux, with Go→UI call, window, `pinentry` and external process. Check `wails3 doctor`, GTK4/WebKitGTK 6.0, Wayland/X11 and packaging. On this machine, `webkitgtk-6.0` was not available in `pkg-config` on 11/12/2026; resolve this or explicitly set the distro floor before approving the port.
-4. Document supported Linux matrix. The legacy GTK3 path should not support the new distribution if the chosen Wails version does not already support it. Run `passage` without internet access and confirm that the built-in frontend opens.
+4. Document supported Linux matrix. The legacy GTK3 path should not support the new distribution if the chosen Wails version does not already support it. Run `passport` without internet access and confirm that the built-in frontend opens.
 
 **Gate:** Wails prototype runs on target Linux and the list of supported distros is explicit. If it fails, keep the branch as a study and do not replace the installed app.
 
@@ -82,8 +82,8 @@ Before porting code, register fixtures **without real secrets** for entry format
 ### Step 4 — Installation, CI, and Transition
 
 1. Update `scripts/install-linux-user.sh`, `package-linux.sh`, release workflow, binary paths, icon, `.desktop` and documentation. Maintain the installed names and release file format as long as possible.
-2. Test update on a Tauri/Rust installation with vault and disposable pairings: install Wails/Go, launch app, read/write, use Brave/Chrome, update again. Do not delete `~/.config/passage` or the vault.
-3. Test installation without repository cloned by `curl -LsSf https://passage.plu.nz/install.sh | sh` against test release. Check SHA-256, registered host and existing extension.
+2. Test update on a Tauri/Rust installation with vault and disposable pairings: install Wails/Go, launch app, read/write, use Brave/Chrome, update again. Do not delete `~/.config/passport` or the vault.
+3. Test installation without repository cloned by `curl -LsSf https://passport.plu.nz/install.sh | sh` against test release. Check SHA-256, registered host and existing extension.
 4. Measure clean build/rebuild again, size, startup and memory under the same conditions as step 0. Document the actual result, including if Go does not bring relevant gains on Linux because of CGO/WebKit.
 5. Remove Tauri/React/Rust and dependencies only after all gates. Update `README.md`, `docs/decisions.md`, execution plan and security review. Publish release only after CI and local update testing pass.
 

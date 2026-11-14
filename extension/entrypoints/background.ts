@@ -1,4 +1,4 @@
-import { NATIVE_HOST_NAME } from '@passage/core';
+import { NATIVE_HOST_NAME } from '@passport/core';
 
 type NativeReply = Record<string, unknown>;
 type PopupRequest = { type: 'status' | 'pair' | 'pairStatus' | 'list' } | { type: 'fill'; id: string; tabId: number; url: string };

@@ -11,7 +11,7 @@ import (
 
 // systemThemeEvent carries a fresh SystemTheme to the UI whenever the desktop
 // theme, color scheme, or font changes.
-const systemThemeEvent = "passage:system-theme"
+const systemThemeEvent = "passport:system-theme"
 
 // SystemTheme is the desktop appearance the UI should follow. Colors holds the
 // GTK theme colors that were found, keyed by role (fg, bg, base, accent, ...).

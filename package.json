@@ -1,12 +1,12 @@
 {
-  "name": "passage",
+  "name": "passport",
   "private": true,
   "packageManager": "pnpm@12.18.0",
   "scripts": {
     "dev:desktop": "./scripts/dev-desktop.sh",
-    "build:desktop": "pnpm --filter @passage/desktop build && go build -o desktop/build/passage ./desktop",
-    "dev:extension": "pnpm --filter @passage/extension dev",
-    "build:extension": "pnpm --filter @passage/extension build",
+    "build:desktop": "pnpm --filter @passport/desktop build && go build -o desktop/build/passport ./desktop",
+    "dev:extension": "pnpm --filter @passport/extension dev",
+    "build:extension": "pnpm --filter @passport/extension build",
     "check": "pnpm -r check"
   }
 }

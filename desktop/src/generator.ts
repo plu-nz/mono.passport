@@ -70,12 +70,13 @@ export function generatePassword(input: GeneratorOptions): string {
   return chars.join('');
 }
 
-const storageKey = 'passage.generator';
+const storageKey = 'passport.generator';
 
 // Only the options are remembered, never a generated password.
 export function loadOptions(): GeneratorOptions {
   try {
-    const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+    // 'passage.generator' is the key from before the rename to Passport.
+    const saved = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem('passage.generator') || 'null');
     return normalize(saved && typeof saved === 'object' ? saved : defaultOptions);
   } catch {
     return { ...defaultOptions };

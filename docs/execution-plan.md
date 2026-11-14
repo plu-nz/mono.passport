@@ -6,7 +6,7 @@ This plan turns [README](../README.md) requirements into verifiable deliverables
 
 ## Expected outcome
 
-A local installation of Passage uses an existing GNU `pass` vault. The user unlocks their GPG key by the system mechanism once; Brave and Chrome can request filling from the same local service, without an independent password per extension. Each extension installation must be authorized and can be revoked. The user can also read and edit entries on the desktop, use `pass` in the terminal, and synchronize encrypted files with a private Git, with explicit conflicts.
+A local installation of Passport uses an existing GNU `pass` vault. The user unlocks their GPG key by the system mechanism once; Brave and Chrome can request filling from the same local service, without an independent password per extension. Each extension installation must be authorized and can be revoked. The user can also read and edit entries on the desktop, use `pass` in the terminal, and synchronize encrypted files with a private Git, with explicit conflicts.
 
 ## Implementation rules
 
@@ -65,7 +65,7 @@ A local installation of Passage uses an existing GNU `pass` vault. The user unlo
 4. Ensure that `pass git` and changes made directly to the repository continue to work. Update the UI when the vault changes on disk or provide clear and reliable update.
 5. Document GPG key backup/recovery and remote access; highlight that entry names and Git history are visible to anyone accessing the repository.
 
-**Accept:** creating and editing in Passage reflects in `pass` and vice versa; synchronization with GitHub and generic Git server works with authentication already configured on the system; reproduced conflict does not lose either version.
+**Accept:** creating and editing in Passport reflects in `pass` and vice versa; synchronization with GitHub and generic Git server works with authentication already configured on the system; reproduced conflict does not lose either version.
 
 ## Milestone 5 — Lockdown, TOTP, and biometrics (3–6 days for lockout/TOTP; biometrics dependent on prototype)
 
@@ -75,7 +75,7 @@ A local installation of Passage uses an existing GNU `pass` vault. The user unlo
 4. Prototype Linux biometrics with test GPG key. The fingerprint must release protected cryptographic material or a system mechanism that releases it; a biometric confirmation on an already opened key does not satisfy unlocking after restart. Evaluate integration with PAM/FIDO2 or secure storage available via distribution and password/recovery key fallback.
 5. Only assume biometrics as a requirement delivered after demonstrating the first access after boot, recovery without reader and behavior consistent with `gpg-agent` and `pass` on the terminal. If the prototype does not achieve this, document the limitation and keep it out of the stable release.
 
-**Accept:** Passage blocking cuts access to extensions even with GPG cached; UI correctly describes what the lock covers; TOTP matches `pass-otp`; Biometrics is end-to-end proof or remains explicitly experimental.
+**Accept:** Passport blocking cuts access to extensions even with GPG cached; UI correctly describes what the lock covers; TOTP matches `pass-otp`; Biometrics is end-to-end proof or remains explicitly experimental.
 
 ## Milestone 6 — Distribution, security, and release (3–5 days)
 
@@ -85,7 +85,7 @@ A local installation of Passage uses an existing GNU `pass` vault. The user unlo
 4. Run final matrix: Brave and Chrome on new and already used profiles; local vault with and without Git; absence of `pass`; GPG with and without cache; lock/revocation; installer without cloned repo; upgrade from a previous version.
 5. Update README, installation page and decisions with actually available features and known limitations. Publish release only after matrix passes.
 
-**Accept:** installing on Linux x86_64 by `passage.plu.nz/install.sh` leaves the desktop and connection with both browsers usable; artifacts are reproducible from commit; README does not promise outstanding functions.
+**Accept:** installing on Linux x86_64 by `passport.plu.nz/install.sh` leaves the desktop and connection with both browsers usable; artifacts are reproducible from commit; README does not promise outstanding functions.
 
 ## Order, dependencies and deliveries
 

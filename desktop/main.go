@@ -5,7 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/plu-nz/mono.passage/internal/ghauth"
+	"github.com/plu-nz/mono.passport/internal/ghauth"
+	"github.com/plu-nz/mono.passport/internal/rename"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -13,25 +14,27 @@ import (
 var assets embed.FS
 
 func main() {
-	// Git runs `passage git-credential get` for the vault's github.com remote.
+	// Upgrades from Passage keep their settings, pairings and WebView data.
+	rename.Migrate()
+	// Git runs `passport git-credential get` for the vault's github.com remote.
 	// It must answer before Wails starts: no window, no single-instance hand-off.
 	if len(os.Args) > 1 && os.Args[1] == "git-credential" {
 		os.Exit(ghauth.CredentialHelper(os.Args[2:], os.Stdin, os.Stdout))
 	}
-	// Keep a Passage-managed vault's credential helper pointing at this binary.
+	// Keep a Passport-managed vault's credential helper pointing at this binary.
 	go refreshHelper()
 	var window *application.WebviewWindow
-	title := "Passage"
+	title := "Passport"
 	var linux application.LinuxOptions
 	if devRun() {
 		// A distinct app ID gives the development window its own Wayland
-		// class (nz.plu.passage.dev), so window rules and shortcuts can
-		// target it apart from an installed Passage.
-		title = "Passage (dev)"
+		// class (nz.plu.passport.dev), so window rules and shortcuts can
+		// target it apart from an installed Passport.
+		title = "Passport (dev)"
 		linux.ApplicationID = devInstanceID
 	}
 	app := application.New(application.Options{
-		Name:  "Passage",
+		Name:  "Passport",
 		Linux: linux,
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -65,16 +68,16 @@ func main() {
 	}
 }
 
-const devInstanceID = "nz.plu.passage.dev"
+const devInstanceID = "nz.plu.passport.dev"
 
 // devRun reports a development run started by scripts/dev-desktop.sh.
 func devRun() bool { return os.Getenv("FRONTEND_DEVSERVER_URL") != "" }
 
 // instanceID keeps a development run from handing off to an installed
-// Passage that is already open.
+// Passport that is already open.
 func instanceID() string {
 	if devRun() {
 		return devInstanceID
 	}
-	return "nz.plu.passage"
+	return "nz.plu.passport"
 }

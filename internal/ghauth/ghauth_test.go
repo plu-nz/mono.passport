@@ -17,7 +17,7 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-// fakeGitHub serves the device flow and the REST endpoints Passage uses.
+// fakeGitHub serves the device flow and the REST endpoints Passport uses.
 func fakeGitHub(t *testing.T, tokenReplies []string) (*Client, *atomic.Int32) {
 	t.Helper()
 	polls := &atomic.Int32{}
@@ -69,13 +69,13 @@ func fakeGitHub(t *testing.T, tokenReplies []string) (*Client, *atomic.Int32) {
 				repos = append(repos, map[string]any{"name": "r", "full_name": "octo/r", "clone_url": "https://github.com/octo/r.git", "private": false})
 			}
 		} else {
-			repos = append(repos, map[string]any{"name": "passage-vault", "full_name": "octo/passage-vault", "clone_url": "https://github.com/octo/passage-vault.git", "private": true, "default_branch": "main"})
+			repos = append(repos, map[string]any{"name": "passport-vault", "full_name": "octo/passport-vault", "clone_url": "https://github.com/octo/passport-vault.git", "private": true, "default_branch": "main"})
 		}
 		json.NewEncoder(w).Encode(repos)
 	})
-	mux.HandleFunc("GET /repos/octo/passage-vault/branches/passage-recovery", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /repos/octo/passport-vault/branches/passport-recovery", func(w http.ResponseWriter, r *http.Request) {
 		if authorized(w, r) {
-			json.NewEncoder(w).Encode(map[string]string{"name": "passage-recovery"})
+			json.NewEncoder(w).Encode(map[string]string{"name": "passport-recovery"})
 		}
 	})
 	mux.HandleFunc("POST /user/repos", func(w http.ResponseWriter, r *http.Request) {
@@ -161,17 +161,17 @@ func TestREST(t *testing.T) {
 		t.Fatalf("User(revoked) = %v", err)
 	}
 	repos, err := c.OwnedRepos(ctx, "gho_secret")
-	if err != nil || len(repos) != 101 || repos[100].FullName != "octo/passage-vault" || !repos[100].Private {
+	if err != nil || len(repos) != 101 || repos[100].FullName != "octo/passport-vault" || !repos[100].Private {
 		t.Fatalf("OwnedRepos() = %d repos, %v", len(repos), err)
 	}
-	if ok, err := c.HasBranch(ctx, "gho_secret", "octo/passage-vault", "passage-recovery"); !ok || err != nil {
+	if ok, err := c.HasBranch(ctx, "gho_secret", "octo/passport-vault", "passport-recovery"); !ok || err != nil {
 		t.Fatalf("HasBranch(existing) = %v, %v", ok, err)
 	}
-	if ok, err := c.HasBranch(ctx, "gho_secret", "octo/other", "passage-recovery"); ok || err != nil {
+	if ok, err := c.HasBranch(ctx, "gho_secret", "octo/other", "passport-recovery"); ok || err != nil {
 		t.Fatalf("HasBranch(missing) = %v, %v", ok, err)
 	}
-	repo, err := c.CreatePrivateRepo(ctx, "gho_secret", "passage-vault", "Passage vault")
-	if err != nil || repo.CloneURL != "https://github.com/octo/passage-vault.git" || !repo.Private {
+	repo, err := c.CreatePrivateRepo(ctx, "gho_secret", "passport-vault", "Passport vault")
+	if err != nil || repo.CloneURL != "https://github.com/octo/passport-vault.git" || !repo.Private {
 		t.Fatalf("CreatePrivateRepo() = %+v, %v", repo, err)
 	}
 	if _, err := c.CreatePrivateRepo(ctx, "gho_secret", "taken", ""); !errors.Is(err, ErrRepoExists) {
@@ -186,7 +186,7 @@ func isolateConfig(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	return filepath.Join(dir, "passage", "github.json")
+	return filepath.Join(dir, "passport", "github.json")
 }
 
 func TestStoreUsesSecretService(t *testing.T) {
@@ -248,7 +248,7 @@ func TestCredentialHelper(t *testing.T) {
 		}
 		return out.String()
 	}
-	request := "protocol=https\nhost=github.com\npath=octo/passage-vault.git\n\n"
+	request := "protocol=https\nhost=github.com\npath=octo/passport-vault.git\n\n"
 	if got := run([]string{"get"}, request); got != "" {
 		t.Fatalf("answered while signed out: %q", got)
 	}

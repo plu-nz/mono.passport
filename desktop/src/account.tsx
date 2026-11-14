@@ -1,4 +1,4 @@
-// Account maintenance for a Passage-managed vault: change the master
+// Account maintenance for a Passport-managed vault: change the master
 // password, export the key for other pass apps, print an emergency kit.
 
 import { createEffect, createSignal, onCleanup, type JSX } from 'solid-js';
@@ -33,7 +33,7 @@ export function ChangePasswordDialog(props: { login: string; minPassword: number
   createEffect(() => {
     const value = next();
     let live = true;
-    void checkStrength(value, [props.login, 'passage', 'github']).then(result => { if (live) setStrength(result); });
+    void checkStrength(value, [props.login, 'passport', 'github']).then(result => { if (live) setStrength(result); });
     onCleanup(() => { live = false; });
   });
   const ok = () => !!current() && [...next()].length >= props.minPassword && (strength()?.score ?? 0) >= minScore && next() === confirm() && next() !== current();
@@ -86,7 +86,7 @@ export function ExportKeyDialog(props: { onClose: () => void }) {
       <p class="hint">On another device, import it with <code>gpg --import</code> (or in Android Password Store / OpenKeychain), then clone the vault repository. Delete the file once it is imported.</p>
       <div class="form-actions"><Button onClick={props.onClose}>Done</Button></div>
     </> : <div class="entry-form">
-      <p>Passage saves your private key to a file so <code>pass</code>, browserpass or Android Password Store can open the same vault. The file stays protected by your master password.</p>
+      <p>Passport saves your private key to a file so <code>pass</code>, browserpass or Android Password Store can open the same vault. The file stays protected by your master password.</p>
       <TextField id="export-password" label="Master password" type="password" value={password()} onInput={event => setPassword(event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Enter' && password()) void exportKey(); }} autocomplete="current-password" disabled={busy()} />
       <div class="form-actions"><Button disabled={!password() || busy()} onClick={() => void exportKey()}>{busy() ? 'Saving…' : 'Choose where to save'}</Button><Button variant="ghost" disabled={busy()} onClick={props.onClose}>Cancel</Button></div>
       {error() && <p class="panel-error" role="alert">{error()}</p>}
@@ -98,7 +98,7 @@ export function EmergencyKit(props: { login: string; repo: string; onClose: () =
   const today = new Date().toLocaleDateString();
   return <Modal title="Emergency kit" class="kit-modal" onClose={props.onClose}>
     <article class="kit print-area">
-      <h1>Passage emergency kit</h1>
+      <h1>Passport emergency kit</h1>
       <p class="kit-date">Printed {today}</p>
       <dl>
         <dt>GitHub account</dt><dd>@{props.login}</dd>
@@ -107,12 +107,12 @@ export function EmergencyKit(props: { login: string; repo: string; onClose: () =
       </dl>
       <h2>Open your vault on a new computer</h2>
       <ol>
-        <li>Install Passage: <code>curl -LsSf https://passage.plu.nz/install.sh | sh</code></li>
-        <li>Open Passage and choose <strong>I already have a vault</strong>.</li>
+        <li>Install Passport: <code>curl -LsSf https://passport.plu.nz/install.sh | sh</code></li>
+        <li>Open Passport and choose <strong>I already have a vault</strong>.</li>
         <li>Sign in to GitHub as <strong>@{props.login}</strong>.</li>
         <li>Enter your master password.</li>
       </ol>
-      <p>Nobody can recover the master password, not even Passage. Keep this page somewhere safe, away from your computer.</p>
+      <p>Nobody can recover the master password, not even Passport. Keep this page somewhere safe, away from your computer.</p>
     </article>
     <div class="form-actions"><Button onClick={() => window.print()}>Print</Button><Button variant="ghost" onClick={props.onClose}>Close</Button></div>
   </Modal>;

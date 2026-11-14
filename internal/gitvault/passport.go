@@ -11,17 +11,17 @@ import (
 // RecoveryBranch holds the sealed private key, outside main so pass, browserpass
 // and Android Password Store never see it. It always has a single commit, so
 // changing the master password does not keep the old copy in its history.
-const RecoveryBranch = "passage-recovery"
+const RecoveryBranch = "passport-recovery"
 
 const recoveryFile = "recovery-key"
-const recoveryRef = "refs/passage/recovery"
+const recoveryRef = "refs/passport/recovery"
 const maxRecoverySize = 1 << 20
 
 // ErrDiverged means this computer and the remote both have new commits.
 var ErrDiverged = errors.New("This computer and the remote both have new changes. Review them in Settings > Advanced")
 
 // ErrNoRecovery means the remote has no recovery branch.
-var ErrNoRecovery = errors.New("This repository has no Passage recovery copy")
+var ErrNoRecovery = errors.New("This repository has no Passport recovery copy")
 
 func (g *GitVault) input(stdin []byte, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
@@ -40,13 +40,13 @@ func shellQuote(path string) string {
 	return "'" + strings.ReplaceAll(path, "'", `'\''`) + "'"
 }
 
-// HelperCommand is the credential.helper value that makes Git ask Passage
+// HelperCommand is the credential.helper value that makes Git ask Passport
 // (the executable at exe) for github.com credentials.
 func HelperCommand(exe string) string { return "!" + shellQuote(exe) + " git-credential" }
 
-// ConfigurePassage points this repository's github.com credentials at Passage
+// ConfigurePassport points this repository's github.com credentials at Passport
 // and sets the commit identity, both only in the local .git/config.
-func (g *GitVault) ConfigurePassage(exe, name, email string) error {
+func (g *GitVault) ConfigurePassport(exe, name, email string) error {
 	if exe == "" || strings.ContainsAny(exe, "\r\n\x00") || strings.ContainsAny(name+email, "\r\n\x00") {
 		return errors.New("Invalid Git configuration")
 	}
@@ -65,9 +65,9 @@ func (g *GitVault) ConfigurePassage(exe, name, email string) error {
 	return nil
 }
 
-// UsesPassageHelper reports whether the repository asks Passage for credentials,
+// UsesPassportHelper reports whether the repository asks Passport for credentials,
 // and through which executable.
-func (g *GitVault) UsesPassageHelper() (string, bool) {
+func (g *GitVault) UsesPassportHelper() (string, bool) {
 	out, ok := g.tryOutput("config", "--local", "--get-all", "credential.https://github.com.helper")
 	if !ok {
 		return "", false
@@ -117,7 +117,7 @@ func (g *GitVault) PublishRecovery(blob []byte) error {
 	if err != nil {
 		return err
 	}
-	commit, err := g.input(nil, "commit-tree", tree, "-m", "Passage recovery copy")
+	commit, err := g.input(nil, "commit-tree", tree, "-m", "Passport recovery copy")
 	if err != nil {
 		return errors.New("Git could not record the recovery copy. Check user.name and user.email")
 	}

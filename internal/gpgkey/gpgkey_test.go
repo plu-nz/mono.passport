@@ -55,7 +55,7 @@ var password = []byte("correct horse battery staple")
 
 func TestMasterPasswordLifecycle(t *testing.T) {
 	first := gnupgHome(t)
-	fp, err := Generate("Passage Test <passage@example.invalid>", password)
+	fp, err := Generate("Passport Test <passport@example.invalid>", password)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestMasterPasswordLifecycle(t *testing.T) {
 
 func TestImportRejectsPublicOnlyKey(t *testing.T) {
 	gnupgHome(t)
-	fp, err := Generate("Passage Test <passage@example.invalid>", password)
+	fp, err := Generate("Passport Test <passport@example.invalid>", password)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestPasswordsGPGWouldTruncate(t *testing.T) {
 			t.Errorf("CheckPassword(%q) accepted", pw)
 		}
 	}
-	if _, err := Generate("Passage Test <passage@example.invalid>", []byte("a\nb")); err == nil {
+	if _, err := Generate("Passport Test <passport@example.invalid>", []byte("a\nb")); err == nil {
 		t.Error("Generate accepted a password with a newline")
 	}
 	if err := CheckPassword([]byte("correct horse battery staple")); err != nil {
@@ -190,7 +190,7 @@ func TestParseEncryptionKeygrips(t *testing.T) {
 
 func TestChangePassphraseAndReplace(t *testing.T) {
 	first := gnupgHome(t)
-	fp, err := Generate("Passage Test <passage@example.invalid>", password)
+	fp, err := Generate("Passport Test <passport@example.invalid>", password)
 	if err != nil {
 		t.Fatal(err)
 	}

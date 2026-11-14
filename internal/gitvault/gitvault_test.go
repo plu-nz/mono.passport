@@ -43,9 +43,9 @@ func TestPublishCommitAndPreserveDivergentCiphertext(t *testing.T) {
 	}
 	t.Setenv("GNUPGHOME", gnupg)
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(root, "gitconfig"))
-	run(t, "", "git", "config", "--global", "user.name", "Passage Test")
-	run(t, "", "git", "config", "--global", "user.email", "passage@example.invalid")
-	run(t, "", "gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-generate-key", "Passage Test <passage@example.invalid>", "default", "default", "1d")
+	run(t, "", "git", "config", "--global", "user.name", "Passport Test")
+	run(t, "", "git", "config", "--global", "user.email", "passport@example.invalid")
+	run(t, "", "gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-generate-key", "Passport Test <passport@example.invalid>", "default", "default", "1d")
 	fingerprint := ""
 	for _, line := range strings.Split(run(t, "", "gpg", "--with-colons", "--fingerprint", "--list-secret-keys"), "\n") {
 		if strings.HasPrefix(line, "fpr:") {

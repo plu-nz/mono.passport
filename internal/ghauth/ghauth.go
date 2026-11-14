@@ -1,7 +1,7 @@
 // Package ghauth signs in to GitHub with the OAuth device flow and talks to
-// the small part of the REST API Passage needs, without the GitHub CLI.
+// the small part of the REST API Passport needs, without the GitHub CLI.
 //
-// Passage is registered as the "Passage" OAuth App of the plu-nz organisation
+// Passport is registered as the "Passport" OAuth App of the plu-nz organisation
 // with device flow enabled. Device flow needs only the public client ID; there
 // is no client secret.
 package ghauth
@@ -20,10 +20,10 @@ import (
 	"time"
 )
 
-// ClientID identifies the plu-nz "Passage" OAuth App. It is public.
+// ClientID identifies the plu-nz "Passport" OAuth App. It is public.
 const ClientID = "Ov23liE8ep7OS2M8Hfsy"
 
-// Scope lets Passage create the private vault repository and push to it.
+// Scope lets Passport create the private vault repository and push to it.
 const Scope = "repo"
 
 var (

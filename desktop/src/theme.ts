@@ -2,8 +2,8 @@ import { Events } from '@wailsio/runtime';
 import { invoke } from './service';
 
 // Follow the desktop's GTK theme: colors, light/dark scheme, and font.
-// main.go sends passage:system-theme when any of them changes. Without
-// system colors, style.css keeps Passage's own palette.
+// main.go sends passport:system-theme when any of them changes. Without
+// system colors, style.css keeps Passport's own palette.
 type SystemTheme = { dark: boolean; colors: Record<string, string>; font: string };
 
 const roles = ['fg', 'bg', 'base', 'text', 'accent', 'accent-fg', 'border', 'placeholder', 'error', 'warning', 'success'];
@@ -31,4 +31,4 @@ function apply(theme: SystemTheme): void {
 }
 
 invoke<SystemTheme>('system_theme').then(apply, () => delete document.documentElement.dataset.theme);
-Events.On('passage:system-theme', event => apply(event.data as SystemTheme));
+Events.On('passport:system-theme', event => apply(event.data as SystemTheme));

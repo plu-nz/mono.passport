@@ -250,7 +250,7 @@ func (g *GitVault) MergePreservingBoth() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-	prefix := fmt.Sprintf("refs/passage/backup/%d", time.Now().UnixNano())
+	prefix := fmt.Sprintf("refs/passport/backup/%d", time.Now().UnixNano())
 	if _, err = g.output("update-ref", prefix+"-local", strings.TrimSpace(localHead)); err != nil {
 		return Status{}, err
 	}

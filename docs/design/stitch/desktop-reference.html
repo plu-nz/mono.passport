@@ -3,7 +3,7 @@
 <html class="dark" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Passage - GNU Pass Native Desktop Client</title>
+<title>Passport - GNU Pass Native Desktop Client</title>
 <!-- Tailwind CSS v3 -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <!-- Google Fonts: Inter & JetBrains Mono for authentic Linux dev aesthetic -->
@@ -92,7 +92,7 @@
 <div class="w-full max-w-5xl mb-4 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-vault-900/90 border border-vault-750/70 rounded-xl shadow-xl text-xs font-mono backdrop-blur">
 <div class="flex items-center gap-2 text-slate-300">
 <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 status-pulse"></span>
-<span class="font-semibold tracking-wider text-slate-100">PASSAGE DESKTOP</span>
+<span class="font-semibold tracking-wider text-slate-100">PASSPORT DESKTOP</span>
 <span class="text-slate-600 hidden sm:inline">|</span>
 <span class="text-slate-400 hidden sm:inline">GPG: 844C3B20CC93... (Henrique Castro)</span>
 </div>
@@ -105,13 +105,13 @@
 <button class="px-2.5 py-1 rounded text-slate-400 hover:text-slate-200 transition-colors" onclick="setWindowWidth(1080, this)">1080px <span class="text-[9px] uppercase tracking-wide text-vault-accent">(Dual)</span></button>
 </div>
 </div>
-<!-- PASSAGE APPLICATION WINDOW -->
+<!-- PASSPORT APPLICATION WINDOW -->
 <div class="transition-all duration-300 ease-out bg-vault-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/90 flex flex-col overflow-hidden min-h-[670px] relative text-slate-200 border-[#1e2638]" id="app-window" style="width: 100%; max-width: 420px;">
 <!-- LINUX CSD TITLEBAR -->
 <header class="h-10 bg-vault-950 border-b border-vault-800/90 px-3 flex items-center justify-between select-none">
 <div class="flex items-center gap-2">
 <div class="w-5 h-5 rounded bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 flex items-center justify-center font-bold text-xs">P</div>
-<span class="font-semibold text-xs tracking-wide text-slate-100">Passage</span>
+<span class="font-semibold text-xs tracking-wide text-slate-100">Passport</span>
 <div class="hidden sm:flex items-center gap-1.5 font-mono text-[10px] text-slate-400 bg-vault-900 px-2 py-0.5 rounded border border-vault-800">
 <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
 <span>Vault: ~/.password-store</span>
@@ -135,7 +135,7 @@
 <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
 </div>
 <div>
-<span class="font-bold text-slate-100 tracking-tight">Passage</span>
+<span class="font-bold text-slate-100 tracking-tight">Passport</span>
 <span class="text-[10px] text-slate-400 ml-1 font-mono">v1.2</span>
 </div>
 </div>
@@ -146,7 +146,7 @@
 <span>Synced 2m ago</span>
 </button>
 <!-- Settings Icon -->
-<button class="p-1.5 rounded hover:bg-vault-800 text-slate-400 hover:text-slate-200 transition" onclick="showToast('Passage &amp; GPG settings')" title="Settings">
+<button class="p-1.5 rounded hover:bg-vault-800 text-slate-400 hover:text-slate-200 transition" onclick="showToast('Passport &amp; GPG settings')" title="Settings">
 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><circle cx="12" cy="12" r="3" stroke-width="2"></circle></svg>
 </button>
 </div>
@@ -288,7 +288,7 @@
 <div class="flex items-center gap-1.5">
 <span class="text-xs font-semibold text-slate-100 truncate group-hover:text-emerald-300">Google Workspace</span>
 </div>
-<div class="text-[11px] font-mono text-slate-400 truncate">admin@passage.dev</div>
+<div class="text-[11px] font-mono text-slate-400 truncate">admin@passport.dev</div>
 </div>
 </div>
 <div class="flex items-center gap-1 shrink-0">
@@ -512,7 +512,7 @@ Personal access token expires in 90 days.</pre>
           </span>
 </div>
 <p class="text-xs text-slate-300 leading-relaxed">
-          Direct browser communication over a secure Unix socket (<code class="text-slate-200">~/.passage.sock</code>). Private keys are never exposed.
+          Direct browser communication over a secure Unix socket (<code class="text-slate-200">~/.passport.sock</code>). Private keys are never exposed.
         </p>
 <!-- Connected Browsers List -->
 <div class="space-y-2 pt-1 font-mono text-xs">
@@ -572,7 +572,7 @@ Personal access token expires in 90 days.</pre>
 </div>
 <!-- Bottom Helper Branding -->
 <div class="w-full max-w-5xl mt-3 text-center text-xs text-slate-400 font-mono">
-    Passage Desktop • Native Linux GNU Pass client built for GNOME / Hyprland / KDE (Tauri 2 + Rust)
+    Passport Desktop • Native Linux GNU Pass client built for GNOME / Hyprland / KDE (Tauri 2 + Rust)
   </div>
 <!-- PURE VANILLA JAVASCRIPT CONTROLLERS -->
 <script>
@@ -617,7 +617,7 @@ Personal access token expires in 90 days.</pre>
       google: {
         title: "Google Workspace",
         path: "~/.password-store/work/google.gpg",
-        username: "admin@passage.dev",
+        username: "admin@passport.dev",
         password: "G!Workspace992@Pass#Org",
         totp: "552 901",
         url: "https://workspace.google.com",

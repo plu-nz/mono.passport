@@ -1,5 +1,5 @@
 {
-  "name": "@passage/extension",
+  "name": "@passport/extension",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "check": "wxt prepare && tsc --noEmit"
   },
   "dependencies": {
-    "@passage/core": "workspace:*"
+    "@passport/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

@@ -1,5 +1,5 @@
 // First-run setup with only a GitHub sign-in and a master password, plus the
-// screen that unlocks a Passage-managed vault.
+// screen that unlocks a Passport-managed vault.
 
 import { createEffect, createSignal, onCleanup, onMount, type JSX } from 'solid-js';
 import { Clipboard, Events } from '@wailsio/runtime';
@@ -100,7 +100,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
     catch (cause) { setError(message(cause)); }
   };
   onMount(() => { void loadAccount(); });
-  onCleanup(Events.On('passage:onboarding-step', event => setStep(String(event.data))));
+  onCleanup(Events.On('passport:onboarding-step', event => setStep(String(event.data))));
 
   const start = (next: Mode) => { setMode(next); setError(''); setScreen('github'); };
 
@@ -129,7 +129,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
     const value = password();
     if (mode() !== 'create') return;
     let current = true;
-    void checkStrength(value, [account()?.login || '', account()?.name || '', 'passage', 'github']).then(result => { if (current) setStrength(result); });
+    void checkStrength(value, [account()?.login || '', account()?.name || '', 'passport', 'github']).then(result => { if (current) setStrength(result); });
     onCleanup(() => { current = false; });
   });
 
@@ -170,7 +170,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
   const errorLine = () => error() && <p class="panel-error" role="alert">{error()}</p>;
 
   return <>
-    {screen() === 'welcome' && <Shell title="Welcome to Passage">
+    {screen() === 'welcome' && <Shell title="Welcome to Passport">
       <p>Your passwords stay encrypted on this computer and sync to a private GitHub repository that only you can open.</p>
       <div class="onboarding-actions">
         <Button onClick={() => start('create')}>Create my vault</Button>
@@ -181,7 +181,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
 
     {screen() === 'github' && <Shell title={mode() === 'create' ? 'Connect GitHub' : 'Find your vault'} back={() => setScreen('welcome')}>
       {props.status.pending && <p class="hint">Continuing the setup that was interrupted. <button class="link" onClick={() => void startOver()}>Start over</button></p>}
-      <p>{mode() === 'create' ? 'Passage keeps an encrypted copy of your vault in a new private repository on your GitHub account.' : 'Sign in to the GitHub account that holds your vault.'}</p>
+      <p>{mode() === 'create' ? 'Passport keeps an encrypted copy of your vault in a new private repository on your GitHub account.' : 'Sign in to the GitHub account that holds your vault.'}</p>
       {busy() ? <p role="status">{busy()}</p> : account()?.signedIn ? <>
         <p class="status-line"><span class="status-dot ready" />Connected as <strong>@{account()!.login}</strong></p>
         <div class="onboarding-actions">
@@ -194,7 +194,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
 
     {screen() === 'choose' && <Shell title={mode() === 'create' ? 'You already have a vault' : vaults().length ? 'Choose your vault' : 'No vault found'} back={() => setScreen('github')}>
       {mode() === 'create' && <>
-        <p><strong>{vaults().map(v => v.fullName).join(', ')}</strong> already holds a Passage vault. Restore it to use the same passwords here.</p>
+        <p><strong>{vaults().map(v => v.fullName).join(', ')}</strong> already holds a Passport vault. Restore it to use the same passwords here.</p>
         <div class="onboarding-actions">
           <Button onClick={() => { setMode('restore'); setScreen(vaults().length === 1 ? 'password' : 'choose'); }}>Restore it</Button>
           <Button variant="outline" onClick={() => setScreen('password')}>Create a new vault</Button>
@@ -204,7 +204,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
         <div class="choices">{vaults().map(v => <label class="choice"><input type="radio" name="vault" checked={repo() === v.fullName} onChange={() => setRepo(v.fullName)} />{v.fullName}</label>)}</div>
         <div class="onboarding-actions"><Button disabled={!repo()} onClick={() => setScreen('password')}>Continue</Button></div>
       </> : <>
-        <p>@{account()?.login} has no repository with a Passage vault.</p>
+        <p>@{account()?.login} has no repository with a Passport vault.</p>
         <div class="onboarding-actions">
           <Button onClick={() => { setMode('create'); setScreen('password'); }}>Create a new vault</Button>
           <Button variant="ghost" onClick={() => void switchAccount().then(() => setScreen('github'))}>Use another account</Button>
@@ -227,7 +227,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
         <Button variant="ghost" size="sm" onClick={() => setShow(!show())}>{show() ? 'Hide' : 'Show'}</Button>
       </div>
       {show() && password() && <p class="hint">Write it down somewhere safe until you know it by heart.</p>}
-      <label class="check"><input type="checkbox" checked={understood()} onChange={event => setUnderstood(event.currentTarget.checked)} />I understand that nobody can recover this password if I forget it, not even Passage.</label>
+      <label class="check"><input type="checkbox" checked={understood()} onChange={event => setUnderstood(event.currentTarget.checked)} />I understand that nobody can recover this password if I forget it, not even Passport.</label>
       <p class="hint">Turn on two-factor authentication on GitHub: your encrypted vault lives there.</p>
       <div class="onboarding-actions"><Button disabled={!canCreate()} onClick={() => void submit()}>Create vault</Button></div>
       {errorLine()}
@@ -246,12 +246,12 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
         const state = index < current ? 'done' : index === current ? 'active' : '';
         return <li class={state}><span class="progress-mark" aria-hidden="true">{state === 'done' ? '✓' : ''}</span>{label}</li>;
       })}</ol>
-      <p class="hint">This can take a minute. Keep Passage open.</p>
+      <p class="hint">This can take a minute. Keep Passport open.</p>
     </Shell>}
 
     {screen() === 'done' && <Shell title="Your vault is ready">
       {mode() === 'create'
-        ? <p>Your passwords sync to the private repository <strong>{doneRepo()}</strong>. To use them on another computer, install Passage, choose “I already have a vault”, sign in with GitHub and enter your master password.</p>
+        ? <p>Your passwords sync to the private repository <strong>{doneRepo()}</strong>. To use them on another computer, install Passport, choose “I already have a vault”, sign in with GitHub and enter your master password.</p>
         : <p>Your passwords from <strong>{doneRepo()}</strong> are on this computer and stay in sync.</p>}
       {mode() === 'create' && <p>Print an emergency kit and keep it with your written-down password, away from this computer.</p>}
       <div class="onboarding-actions"><Button onClick={props.onDone}>Open my vault</Button>{mode() === 'create' && <Button variant="outline" onClick={() => setKit(true)}>Print emergency kit</Button>}</div>
@@ -275,7 +275,7 @@ export function UnlockScreen(props: { repo: string; onUnlocked: () => void }) {
     } catch (cause) { setError(message(cause)); }
     finally { setBusy(false); }
   }
-  return <Shell title="Passage is locked">
+  return <Shell title="Passport is locked">
     <p>Enter your master password to open <strong>{props.repo}</strong>.</p>
     <TextField id="unlock-password" label="Master password" type="password" value={password()} onInput={event => setPassword(event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Enter') void unlock(); }} autocomplete="current-password" autofocus />
     <div class="onboarding-actions"><Button disabled={!password() || busy()} onClick={() => void unlock()}>{busy() ? 'Unlocking…' : 'Unlock'}</Button></div>

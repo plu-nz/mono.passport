@@ -30,7 +30,7 @@ async function loadEntries() {
     entries.append(button(`${entry.title}${typeof entry.username === 'string' ? ` · ${entry.username}` : ''}`, async () => {
       const result = await request({ type: 'fill', id: entry.id, tabId: response.tabId, url: response.url });
       status.textContent = result.type === 'filled' ? 'Credentials filled.'
-        : result.type === 'usernameOnly' ? 'Username filled. Continue to the password step and click Passage again.'
+        : result.type === 'usernameOnly' ? 'Username filled. Continue to the password step and click Passport again.'
         : result.type === 'ambiguous' ? 'Ambiguous login fields found. No credentials were filled.'
         : 'No suitable login field was found on this page.';
     }));
@@ -50,7 +50,7 @@ function offerPairing() {
   actions.replaceChildren(button('Request new pairing', async () => {
     const pair = await request({ type: 'pair' });
     if (pair.type !== 'pairPending' || typeof pair.code !== 'string') throw new Error('Pairing unavailable.');
-    status.textContent = `Approve in a terminal: passage-native-host approve ${pair.code}`;
+    status.textContent = `Approve in a terminal: passport-native-host approve ${pair.code}`;
     actions.replaceChildren(button('Check approval', checkPairing));
   }));
 }
@@ -59,7 +59,7 @@ async function initialize() {
   const response = await request({ type: 'status' });
   if (response.type !== 'status') throw new Error('Local host unavailable.');
   if (response.locked === true) {
-    status.textContent = 'Extension access is locked in Passage.';
+    status.textContent = 'Extension access is locked in Passport.';
     actions.replaceChildren(button('Check again', initialize));
     entries.replaceChildren();
     return;

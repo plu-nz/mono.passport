@@ -11,14 +11,14 @@ import time
 import unittest
 
 
-HOST = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else Path("native-host/build/passage-native-host").resolve()
+HOST = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else Path("native-host/build/passport-native-host").resolve()
 ORIGIN_A = "chrome-extension://" + "a" * 32 + "/"
 ORIGIN_B = "chrome-extension://" + "b" * 32 + "/"
 
 
 class NativeHostIntegration(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="passage-native-test-", dir=os.environ.get("TMPDIR"))
+        self.temp = tempfile.TemporaryDirectory(prefix="passport-native-test-", dir=os.environ.get("TMPDIR"))
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
         store = root / "store"
@@ -31,7 +31,7 @@ class NativeHostIntegration(unittest.TestCase):
         executable.write_text(
             "#!/bin/sh\n"
             'if [ "$1" = show ]; then\n'
-            '  if [ "${PASSAGE_TEST_DELAY:-}" = 1 ]; then touch "$PASSAGE_TEST_MARKER"; sleep 1; fi\n'
+            '  if [ "${PASSPORT_TEST_DELAY:-}" = 1 ]; then touch "$PASSPORT_TEST_MARKER"; sleep 1; fi\n'
             "  printf 'safe\\nlogin: tester\\nurl: https://example.test/login\\n'\n"
             "  exit 0\n"
             "fi\nexit 1\n"
@@ -42,7 +42,7 @@ class NativeHostIntegration(unittest.TestCase):
             "HOME": str(root),
             "XDG_CONFIG_HOME": str(root / "config"),
             "PASSWORD_STORE_DIR": str(store),
-            "PASSAGE_TEST_MARKER": str(self.marker),
+            "PASSPORT_TEST_MARKER": str(self.marker),
             "PATH": str(bin_dir) + os.pathsep + os.environ["PATH"],
         }
 
@@ -91,7 +91,7 @@ class NativeHostIntegration(unittest.TestCase):
         fields = {"installationId": "installation", "token": token, "origin": "https://example.test", "id": "example.test"}
         self.assertEqual(self.request(ORIGIN_A, "readForOrigin", **fields)["password"], "safe")
 
-        delayed_env = {**self.env, "PASSAGE_TEST_DELAY": "1"}
+        delayed_env = {**self.env, "PASSPORT_TEST_DELAY": "1"}
         process = subprocess.Popen(
             [str(HOST), ORIGIN_A], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, env=delayed_env,

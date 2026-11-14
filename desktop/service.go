@@ -5,15 +5,15 @@ import (
 	"os/exec"
 	"regexp"
 
-	"github.com/plu-nz/mono.passage/internal/github"
-	"github.com/plu-nz/mono.passage/internal/gitvault"
-	"github.com/plu-nz/mono.passage/internal/otp"
-	"github.com/plu-nz/mono.passage/internal/pairing"
-	"github.com/plu-nz/mono.passage/internal/setup"
-	"github.com/plu-nz/mono.passage/internal/vault"
+	"github.com/plu-nz/mono.passport/internal/github"
+	"github.com/plu-nz/mono.passport/internal/gitvault"
+	"github.com/plu-nz/mono.passport/internal/otp"
+	"github.com/plu-nz/mono.passport/internal/pairing"
+	"github.com/plu-nz/mono.passport/internal/setup"
+	"github.com/plu-nz/mono.passport/internal/vault"
 )
 
-// DesktopService exposes a fixed set of Passage actions to the embedded UI.
+// DesktopService exposes a fixed set of Passport actions to the embedded UI.
 type DesktopService struct{}
 
 type VaultState struct {

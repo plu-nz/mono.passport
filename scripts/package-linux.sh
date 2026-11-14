@@ -3,8 +3,8 @@ set -euo pipefail
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 output_dir="${1:-$repo_dir/dist/release}"
-archive='passage-linux-x86_64.tar.gz'
-extension_archive='passage-extension-chromium.tar.gz'
+archive='passport-linux-x86_64.tar.gz'
+extension_archive='passport-extension-chromium.tar.gz'
 extension_dir="$repo_dir/extension/.output/chrome-mv3"
 
 if [[ "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ]]; then
@@ -23,13 +23,13 @@ fi
 mkdir -p "$output_dir"
 stage_parent="${TMPDIR:-${XDG_CACHE_HOME:-$HOME/.cache}}"
 mkdir -p "$stage_parent"
-stage_dir="$(mktemp -d -p "$stage_parent" passage-package.XXXXXX)"
+stage_dir="$(mktemp -d -p "$stage_parent" passport-package.XXXXXX)"
 trap 'rm -rf -- "$stage_dir"' EXIT
 
-desktop_binary="${PASSAGE_DESKTOP_BINARY:-$repo_dir/desktop/build/passage}"
-install -Dm755 "$desktop_binary" "$stage_dir/passage"
-host_binary="${PASSAGE_NATIVE_HOST_BINARY:-$repo_dir/native-host/build/passage-native-host}"
-install -Dm755 "$host_binary" "$stage_dir/passage-native-host"
+desktop_binary="${PASSPORT_DESKTOP_BINARY:-$repo_dir/desktop/build/passport}"
+install -Dm755 "$desktop_binary" "$stage_dir/passport"
+host_binary="${PASSPORT_NATIVE_HOST_BINARY:-$repo_dir/native-host/build/passport-native-host}"
+install -Dm755 "$host_binary" "$stage_dir/passport-native-host"
 install -Dm755 "$repo_dir/scripts/install-native-host.sh" "$stage_dir/install-native-host.sh"
 python3 - "$repo_dir/extension/identity.json" "$extension_dir/manifest.json" "$stage_dir/extension-id.txt" <<'PY'
 import base64
@@ -48,10 +48,10 @@ if extension_id != identity["id"]:
     raise SystemExit("Extension ID does not match the public key")
 pathlib.Path(sys.argv[3]).write_text(extension_id + "\n", encoding="utf-8")
 PY
-install -Dm644 "$repo_dir/desktop/icons/icon.png" "$stage_dir/nz.plu.passage.png"
-install -Dm644 "$repo_dir/scripts/nz.plu.passage.desktop" "$stage_dir/nz.plu.passage.desktop"
+install -Dm644 "$repo_dir/desktop/icons/icon.png" "$stage_dir/nz.plu.passport.png"
+install -Dm644 "$repo_dir/scripts/nz.plu.passport.desktop" "$stage_dir/nz.plu.passport.desktop"
 
-tar -C "$stage_dir" -czf "$output_dir/$archive" passage passage-native-host install-native-host.sh extension-id.txt nz.plu.passage.png nz.plu.passage.desktop
+tar -C "$stage_dir" -czf "$output_dir/$archive" passport passport-native-host install-native-host.sh extension-id.txt nz.plu.passport.png nz.plu.passport.desktop
 (cd "$output_dir" && sha256sum "$archive" > "$archive.sha256")
 tar -C "$extension_dir" -czf "$output_dir/$extension_archive" .
 (cd "$output_dir" && sha256sum "$extension_archive" > "$extension_archive.sha256")

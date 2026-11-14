@@ -41,7 +41,7 @@ func TestDisposablePassStoreAndConflict(t *testing.T) {
 	}
 	t.Setenv("GNUPGHOME", gnupg)
 	store := filepath.Join(home, "store")
-	key := exec.Command("gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-generate-key", "Passage Go Test <go-test@example.invalid>", "default", "default", "1d")
+	key := exec.Command("gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-generate-key", "Passport Go Test <go-test@example.invalid>", "default", "default", "1d")
 	if out, err := key.CombinedOutput(); err != nil {
 		t.Fatalf("gpg: %v %s", err, out)
 	}

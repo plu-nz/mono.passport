@@ -10,9 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/plu-nz/mono.passage/internal/github"
-	"github.com/plu-nz/mono.passage/internal/gitvault"
-	"github.com/plu-nz/mono.passage/internal/gpgkey"
+	"github.com/plu-nz/mono.passport/internal/github"
+	"github.com/plu-nz/mono.passport/internal/gitvault"
+	"github.com/plu-nz/mono.passport/internal/gpgkey"
 )
 
 type GPGKey struct {
@@ -36,9 +36,9 @@ type settings struct {
 	VaultPath      string `json:"vaultPath,omitempty"`
 	RefreshSeconds *int   `json:"refreshSeconds,omitempty"`
 	NavPosition    string `json:"navPosition,omitempty"`
-	// GitHubRepo is the "owner/name" of a vault repository Passage created or restored.
+	// GitHubRepo is the "owner/name" of a vault repository Passport created or restored.
 	GitHubRepo string `json:"githubRepo,omitempty"`
-	// AutoSync makes Passage pull and push on its own.
+	// AutoSync makes Passport pull and push on its own.
 	AutoSync   bool             `json:"autoSync,omitempty"`
 	Onboarding *onboardingState `json:"onboarding,omitempty"`
 }
@@ -69,7 +69,7 @@ func settingsPath() (string, error) {
 	if !filepath.IsAbs(base) {
 		return "", errors.New("XDG_CONFIG_HOME must be an absolute path")
 	}
-	return filepath.Join(base, "passage", "settings.json"), nil
+	return filepath.Join(base, "passport", "settings.json"), nil
 }
 func ActiveVaultPath() (string, string, error) {
 	if p, ok := os.LookupEnv("PASSWORD_STORE_DIR"); ok {
@@ -123,7 +123,7 @@ func VaultInfoCurrent() (VaultInfo, error) {
 func available(name string) bool { return exec.Command(name, "--version").Run() == nil }
 func allowed() error {
 	if _, ok := os.LookupEnv("PASSWORD_STORE_DIR"); ok {
-		return errors.New("PASSWORD_STORE_DIR is defined and takes precedence over the selection in Passage")
+		return errors.New("PASSWORD_STORE_DIR is defined and takes precedence over the selection in Passport")
 	}
 	return nil
 }
@@ -136,10 +136,10 @@ func readSettings(config string) (settings, error) {
 		return s, nil
 	}
 	if err != nil {
-		return s, errors.New("Unable to read Passage settings")
+		return s, errors.New("Unable to read Passport settings")
 	}
 	if json.Unmarshal(data, &s) != nil {
-		return s, errors.New("Invalid Passage settings. Fix settings.json")
+		return s, errors.New("Invalid Passport settings. Fix settings.json")
 	}
 	return s, nil
 }

@@ -59,10 +59,10 @@ func OpenDefault() (*Store, error) {
 	if !filepath.IsAbs(base) {
 		return nil, errors.New("XDG_CONFIG_HOME must be an absolute path")
 	}
-	return OpenAt(filepath.Join(base, "passage"))
+	return OpenAt(filepath.Join(base, "passport"))
 }
 
-// OpenAt is useful for isolated tests; its argument is the Passage config directory.
+// OpenAt is useful for isolated tests; its argument is the Passport config directory.
 func OpenAt(dir string) (*Store, error) {
 	if !filepath.IsAbs(dir) {
 		return nil, errors.New("configuration directory needs to be absolute")

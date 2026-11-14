@@ -32,7 +32,7 @@ func twoClones(t *testing.T) (first, second *GitVault, remote string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := first.ConfigurePassage("/opt/Pass age/passage", "Octo", "42+octo@users.noreply.github.com"); err != nil {
+	if err := first.ConfigurePassport("/opt/Pass age/passport", "Octo", "42+octo@users.noreply.github.com"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := first.SetRemote(remote); err != nil {
@@ -47,7 +47,7 @@ func twoClones(t *testing.T) (first, second *GitVault, remote string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := second.ConfigurePassage("/opt/passage", "Octo", "42+octo@users.noreply.github.com"); err != nil {
+	if err := second.ConfigurePassport("/opt/passport", "Octo", "42+octo@users.noreply.github.com"); err != nil {
 		t.Fatal(err)
 	}
 	return first, second, remote
@@ -60,27 +60,27 @@ func commitFile(t *testing.T, g *GitVault, name, content string) {
 	run(t, g.Root(), "git", "commit", "-q", "-m", "change "+name)
 }
 
-func TestConfigurePassageHelper(t *testing.T) {
+func TestConfigurePassportHelper(t *testing.T) {
 	first, _, _ := twoClones(t)
 	helpers := run(t, first.Root(), "git", "config", "--local", "--get-all", "credential.https://github.com.helper")
-	if helpers != "\n!'/opt/Pass age/passage' git-credential\n" {
-		t.Fatalf("helpers = %q; want a reset followed by the quoted Passage helper", helpers)
+	if helpers != "\n!'/opt/Pass age/passport' git-credential\n" {
+		t.Fatalf("helpers = %q; want a reset followed by the quoted Passport helper", helpers)
 	}
-	if got, ok := first.UsesPassageHelper(); !ok || got != "!'/opt/Pass age/passage' git-credential" {
-		t.Fatalf("UsesPassageHelper() = %q, %v", got, ok)
+	if got, ok := first.UsesPassportHelper(); !ok || got != "!'/opt/Pass age/passport' git-credential" {
+		t.Fatalf("UsesPassportHelper() = %q, %v", got, ok)
 	}
 	if email := strings.TrimSpace(run(t, first.Root(), "git", "config", "--local", "user.email")); email != "42+octo@users.noreply.github.com" {
 		t.Fatalf("user.email = %q", email)
 	}
 	// Reconfiguring (a new install path) replaces the helper instead of adding one.
-	first.ConfigurePassage("/usr/bin/passage", "Octo", "42+octo@users.noreply.github.com")
-	if helpers := run(t, first.Root(), "git", "config", "--local", "--get-all", "credential.https://github.com.helper"); helpers != "\n!'/usr/bin/passage' git-credential\n" {
+	first.ConfigurePassport("/usr/bin/passport", "Octo", "42+octo@users.noreply.github.com")
+	if helpers := run(t, first.Root(), "git", "config", "--local", "--get-all", "credential.https://github.com.helper"); helpers != "\n!'/usr/bin/passport' git-credential\n" {
 		t.Fatalf("after reconfigure helpers = %q", helpers)
 	}
 	if HelperCommand("/a'b") != `!'/a'\''b' git-credential` {
 		t.Fatalf("HelperCommand quoting = %q", HelperCommand("/a'b"))
 	}
-	if err := first.ConfigurePassage("/x\n", "a", "b"); err == nil {
+	if err := first.ConfigurePassport("/x\n", "a", "b"); err == nil {
 		t.Fatal("newline accepted in Git configuration")
 	}
 }

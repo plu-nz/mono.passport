@@ -174,7 +174,7 @@ importers:
 
   desktop:
     dependencies:
-      '@passage/core':
+      '@passport/core':
         specifier: workspace:*
         version: link:../core
       '@plunz/storybook':
@@ -208,7 +208,7 @@ importers:
 
   extension:
     dependencies:
-      '@passage/core':
+      '@passport/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:

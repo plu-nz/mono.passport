@@ -9,19 +9,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/plu-nz/mono.passage/internal/ghauth"
-	"github.com/plu-nz/mono.passage/internal/gitvault"
-	"github.com/plu-nz/mono.passage/internal/gpgkey"
-	"github.com/plu-nz/mono.passage/internal/setup"
-	"github.com/plu-nz/mono.passage/internal/vault"
+	"github.com/plu-nz/mono.passport/internal/ghauth"
+	"github.com/plu-nz/mono.passport/internal/gitvault"
+	"github.com/plu-nz/mono.passport/internal/gpgkey"
+	"github.com/plu-nz/mono.passport/internal/setup"
+	"github.com/plu-nz/mono.passport/internal/vault"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // onboardingEvent carries the step the create or restore flow is working on.
-const onboardingEvent = "passage:onboarding-step"
+const onboardingEvent = "passport:onboarding-step"
 
 // syncEvent carries a fresh SyncState whenever background sync changes it.
-const syncEvent = "passage:sync"
+const syncEvent = "passport:sync"
 
 var githubClient = ghauth.New()
 
@@ -139,12 +139,12 @@ func (*DesktopService) GitHubSignOut() error {
 	return ghauth.Delete()
 }
 
-// OpenRevokePage opens GitHub's page for removing Passage's access.
+// OpenRevokePage opens GitHub's page for removing Passport's access.
 func (*DesktopService) OpenRevokePage() error {
 	return application.Get().Browser.OpenURL(ghauth.RevokeURL())
 }
 
-// FindGitHubVaults lists the account's repositories that hold a Passage vault.
+// FindGitHubVaults lists the account's repositories that hold a Passport vault.
 func (*DesktopService) FindGitHubVaults() ([]ghauth.Repo, error) {
 	a, err := ghauth.Load()
 	if err != nil {
@@ -160,7 +160,7 @@ type OnboardingStatus struct {
 	Pending     string `json:"pending"`
 	MinPassword int    `json:"minPassword"`
 	VaultPath   string `json:"vaultPath"`
-	// ManagedRepo is the GitHub repository of a vault Passage created or restored.
+	// ManagedRepo is the GitHub repository of a vault Passport created or restored.
 	ManagedRepo string `json:"managedRepo"`
 }
 
@@ -201,7 +201,7 @@ var onboarding sync.Mutex
 
 func (*DesktopService) CreateVaultWithGitHub(password string) (setup.VaultInfo, error) {
 	if !onboarding.TryLock() {
-		return setup.VaultInfo{}, errors.New("Passage is already setting up a vault")
+		return setup.VaultInfo{}, errors.New("Passport is already setting up a vault")
 	}
 	defer onboarding.Unlock()
 	a, err := ghauth.Load()
@@ -221,7 +221,7 @@ func (*DesktopService) CreateVaultWithGitHub(password string) (setup.VaultInfo, 
 
 func (*DesktopService) RestoreVaultFromGitHub(fullName, password string) (setup.VaultInfo, error) {
 	if !onboarding.TryLock() {
-		return setup.VaultInfo{}, errors.New("Passage is already setting up a vault")
+		return setup.VaultInfo{}, errors.New("Passport is already setting up a vault")
 	}
 	defer onboarding.Unlock()
 	a, err := ghauth.Load()
@@ -241,7 +241,7 @@ func (*DesktopService) RestoreVaultFromGitHub(fullName, password string) (setup.
 		}
 	}
 	if repo == nil {
-		return setup.VaultInfo{}, errors.New("That repository has no Passage vault")
+		return setup.VaultInfo{}, errors.New("That repository has no Passport vault")
 	}
 	exe, err := executable()
 	if err != nil {
@@ -283,7 +283,7 @@ func (*DesktopService) ExportKey(password string) (string, error) {
 		return "", err
 	}
 	home, _ := os.UserHomeDir()
-	path, err := application.Get().Dialog.SaveFile().SetMessage("Save your Passage key").SetFilename("passage-key.asc").SetDirectory(home).AddFilter("Armored GPG key", "*.asc").PromptForSingleSelection()
+	path, err := application.Get().Dialog.SaveFile().SetMessage("Save your Passport key").SetFilename("passport-key.asc").SetDirectory(home).AddFilter("Armored GPG key", "*.asc").PromptForSingleSelection()
 	if err != nil || path == "" {
 		return "", err
 	}
@@ -412,7 +412,7 @@ func syncOnce() SyncState {
 }
 
 // refreshHelper keeps the vault's credential helper pointing at this
-// executable after Passage moves (an update, or a development build).
+// executable after Passport moves (an update, or a development build).
 func refreshHelper() {
 	v, err := vault.OpenEnv()
 	if err != nil {
@@ -422,7 +422,7 @@ func refreshHelper() {
 	if err != nil {
 		return
 	}
-	current, ok := g.UsesPassageHelper()
+	current, ok := g.UsesPassportHelper()
 	if !ok {
 		return
 	}
@@ -434,5 +434,5 @@ func refreshHelper() {
 	if err != nil {
 		return
 	}
-	g.ConfigurePassage(exe, a.User().DisplayName(), a.User().NoreplyEmail())
+	g.ConfigurePassport(exe, a.User().DisplayName(), a.User().NoreplyEmail())
 }

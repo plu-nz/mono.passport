@@ -2,20 +2,20 @@
 
 The Native Messaging host serves Brave and Chrome using the user's GNU `pass` vault. It is launched by the browser on demand, without requiring the desktop window to be open. The desktop and CLI share pairing state in the Go package `internal/pairing`.
 
-The release installer installs `passage-native-host` alongside the desktop. When the release contains the extension, the installer automatically registers the fixed ID `edmjpcolampgjbnmldchmnkinmhakjgm` in browsers; you still need to load the extension folder in each browser and approve each pairing. To register another build manually, enter the IDs displayed by browsers:
+The release installer installs `passport-native-host` alongside the desktop. When the release contains the extension, the installer automatically registers the fixed ID `edmjpcolampgjbnmldchmnkinmhakjgm` in browsers; you still need to load the extension folder in each browser and approve each pairing. To register another build manually, enter the IDs displayed by browsers:
 
 ```sh
-passage-install-native-host "$HOME/.local/bin/passage-native-host" BRAVE_ID CHROME_ID
+passport-install-native-host "$HOME/.local/bin/passport-native-host" BRAVE_ID CHROME_ID
 ```
 
-You can also set `PASSAGE_BRAVE_EXTENSION_ID` and `PASSAGE_CHROME_EXTENSION_ID` before running the installer, to override the default ID in one or both browsers. Older releases without a host in the archive remain installable but cannot connect to browsers.
+You can also set `PASSPORT_BRAVE_EXTENSION_ID` and `PASSPORT_CHROME_EXTENSION_ID` before running the installer, to override the default ID in one or both browsers. Older releases without a host in the archive remain installable but cannot connect to browsers.
 
 ## Build and register
 
 ```sh
-go build -o native-host/build/passage-native-host ./native-host
+go build -o native-host/build/passport-native-host ./native-host
 sh scripts/install-native-host.sh \
-  "$PWD/native-host/build/passage-native-host" \
+  "$PWD/native-host/build/passport-native-host" \
   ID_SHOWN_IN_BRAVE_EXTENSIONS \
   ID_SHOWN_IN_CHROME_EXTENSIONS
 ```
@@ -26,7 +26,7 @@ To test the protocol without touching the vault or real profiles:
 
 ```sh
 go test ./internal/pairing ./native-host
-python3 native-host/tests/integration.py "$PWD/native-host/build/passage-native-host"
+python3 native-host/tests/integration.py "$PWD/native-host/build/passport-native-host"
 ```
 
 ## Pair and revoke
@@ -34,16 +34,16 @@ python3 native-host/tests/integration.py "$PWD/native-host/build/passage-native-
 The popup requests pairing and shows a 12-character code that expires in 5 minutes. Confirm on the desktop interface or via the terminal:
 
 ```sh
-passage-native-host approve CODE
-passage-native-host list
-passage-native-host revoke chrome-extension://EXTENSION_ID/ INSTALLATION_ID
+passport-native-host approve CODE
+passport-native-host list
+passport-native-host revoke chrome-extension://EXTENSION_ID/ INSTALLATION_ID
 ```
 
-`list` shows the source and installation ID; `revoke` blocks follow-up requests. The token issued upon approval is sent once to the browser and stored only as a hash on the host. The local state is at `~/.config/passage/native-host.json` (or `XDG_CONFIG_HOME/passage`) with user permissions.
+`list` shows the source and installation ID; `revoke` blocks follow-up requests. The token issued upon approval is sent once to the browser and stored only as a hash on the host. The local state is at `~/.config/passport/native-host.json` (or `XDG_CONFIG_HOME/passport`) with user permissions.
 
 Each pairing is only valid for the vault selected when approved. When choosing another vault on the desktop, the extension needs to be paired again to access it. The desktop interface shows only pairings for the current vault; `list` in CLI shows all to allow revocation. If you reselect a previous vault, the old pairing for that vault remains valid until revoked.
 
-The desktop can block extension access with `passage-native-host lock` and allow them again with `passage-native-host unlock`. The state persists after closing the application or restarting the computer; `passage-native-host lock-status` queries it. Blocking cuts off new requests even when the `gpg-agent` still has the key in cache. It does not block the direct use of `pass` on the terminal or delete a password that is already visible on a browser page.
+The desktop can block extension access with `passport-native-host lock` and allow them again with `passport-native-host unlock`. The state persists after closing the application or restarting the computer; `passport-native-host lock-status` queries it. Blocking cuts off new requests even when the `gpg-agent` still has the key in cache. It does not block the direct use of `pass` on the terminal or delete a password that is already visible on a browser page.
 
 ## Current limitations
 

@@ -28,7 +28,7 @@ type Params struct {
 // DefaultParams take about half a second on a modest laptop (256 MiB, 3 passes).
 var DefaultParams = Params{Memory: 256 * 1024, Time: 3, Threads: 4}
 
-// Bounds applied when opening a file, so a hostile file cannot make Passage
+// Bounds applied when opening a file, so a hostile file cannot make Passport
 // allocate unbounded memory or spin for minutes before failing.
 const (
 	minMemory  = 8 * 1024

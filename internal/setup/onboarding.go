@@ -10,10 +10,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/plu-nz/mono.passage/internal/ghauth"
-	"github.com/plu-nz/mono.passage/internal/gitvault"
-	"github.com/plu-nz/mono.passage/internal/gpgkey"
-	"github.com/plu-nz/mono.passage/internal/recovery"
+	"github.com/plu-nz/mono.passport/internal/ghauth"
+	"github.com/plu-nz/mono.passport/internal/gitvault"
+	"github.com/plu-nz/mono.passport/internal/gpgkey"
+	"github.com/plu-nz/mono.passport/internal/recovery"
 )
 
 // Onboarding steps, reported in order through Progress so the UI can tick them off.
@@ -35,7 +35,7 @@ type Progress func(step string)
 const MinPasswordLength = 12
 
 // RepoName is the default name of the private vault repository.
-const RepoName = "passage-vault"
+const RepoName = "passport-vault"
 
 // onboardingState is saved after each completed step, never with secrets, so
 // an interrupted create or restore resumes instead of starting over.
@@ -92,7 +92,7 @@ func OnboardingPending() (string, error) {
 // repository already created are left in place.
 func AbandonOnboarding() error { return saveState(nil) }
 
-// AutoSync reports whether Passage syncs the vault on its own.
+// AutoSync reports whether Passport syncs the vault on its own.
 func AutoSync() (bool, error) {
 	s, err := readState()
 	return s.AutoSync, err
@@ -101,7 +101,7 @@ func AutoSync() (bool, error) {
 // SetAutoSync turns automatic sync on or off.
 func SetAutoSync(on bool) error { return updateSettings(func(s *settings) { s.AutoSync = on }) }
 
-// GitHubRepo is the "owner/name" of the vault repository Passage manages, if any.
+// GitHubRepo is the "owner/name" of the vault repository Passport manages, if any.
 func GitHubRepo() (string, error) {
 	s, err := readState()
 	return s.GitHubRepo, err
@@ -146,7 +146,7 @@ func recipients(path string) []string {
 
 // CreateWithGitHub creates a key protected by the master password, a pass
 // vault at the default path, a private GitHub repository holding it, and the
-// sealed recovery copy, then unlocks the key. exe is the Passage executable
+// sealed recovery copy, then unlocks the key. exe is the Passport executable
 // Git will call for credentials.
 func CreateWithGitHub(ctx context.Context, client *ghauth.Client, account ghauth.Account, password []byte, exe string, progress Progress) (VaultInfo, error) {
 	if err := allowed(); err != nil {
@@ -217,7 +217,7 @@ func CreateWithGitHub(ctx context.Context, client *ghauth.Client, account ghauth
 	if err != nil {
 		return VaultInfo{}, err
 	}
-	if err := git.ConfigurePassage(exe, user.DisplayName(), user.NoreplyEmail()); err != nil {
+	if err := git.ConfigurePassport(exe, user.DisplayName(), user.NoreplyEmail()); err != nil {
 		return VaultInfo{}, err
 	}
 
@@ -275,24 +275,24 @@ func CreateWithGitHub(ctx context.Context, client *ghauth.Client, account ghauth
 	return VaultInfoCurrent()
 }
 
-// createRepo tries passage-vault, then passage-vault-2 … -9.
+// createRepo tries passport-vault, then passport-vault-2 … -9.
 func createRepo(ctx context.Context, client *ghauth.Client, token string) (ghauth.Repo, error) {
 	for i := 1; i <= 9; i++ {
 		name := RepoName
 		if i > 1 {
 			name = fmt.Sprintf("%s-%d", RepoName, i)
 		}
-		repo, err := client.CreatePrivateRepo(ctx, token, name, "Passage vault: entries encrypted with GPG, compatible with pass")
+		repo, err := client.CreatePrivateRepo(ctx, token, name, "Passport vault: entries encrypted with GPG, compatible with pass")
 		if errors.Is(err, ghauth.ErrRepoExists) {
 			continue
 		}
 		return repo, err
 	}
-	return ghauth.Repo{}, errors.New("Unable to find a free repository name. Rename an old passage-vault repository on GitHub")
+	return ghauth.Repo{}, errors.New("Unable to find a free repository name. Rename an old passport-vault repository on GitHub")
 }
 
 // FindGitHubVaults lists the account's private repositories that hold a
-// Passage recovery copy. Only names containing "passage" are checked, so the
+// Passport recovery copy. Only names containing "passport" are checked, so the
 // lookup stays a handful of requests.
 func FindGitHubVaults(ctx context.Context, client *ghauth.Client, token string) ([]ghauth.Repo, error) {
 	repos, err := client.OwnedRepos(ctx, token)
@@ -301,7 +301,7 @@ func FindGitHubVaults(ctx context.Context, client *ghauth.Client, token string) 
 	}
 	found := []ghauth.Repo{}
 	for _, repo := range repos {
-		if !repo.Private || !strings.Contains(strings.ToLower(repo.Name), "passage") {
+		if !repo.Private || !strings.Contains(strings.ToLower(repo.Name), "passport") {
 			continue
 		}
 		ok, err := client.HasBranch(ctx, token, repo.FullName, gitvault.RecoveryBranch)
@@ -372,7 +372,7 @@ func RestoreFromGitHub(ctx context.Context, account ghauth.Account, repo ghauth.
 	if err != nil {
 		return VaultInfo{}, err
 	}
-	if err := git.ConfigurePassage(exe, user.DisplayName(), user.NoreplyEmail()); err != nil {
+	if err := git.ConfigurePassport(exe, user.DisplayName(), user.NoreplyEmail()); err != nil {
 		return VaultInfo{}, err
 	}
 

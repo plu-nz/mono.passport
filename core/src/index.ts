@@ -1,4 +1,4 @@
-/** Public contract shared by Passage clients. Implementations remain platform-specific. */
+/** Public contract shared by Passport clients. Implementations remain platform-specific. */
 export interface VaultEntry {
   id: string;
   title: string;
@@ -18,7 +18,7 @@ export interface VaultPort {
   list(): Promise<VaultEntry[]>;
 }
 
-export const NATIVE_HOST_NAME = 'com.plunz.passage';
+export const NATIVE_HOST_NAME = 'com.plunz.passport';
 
 export type NativeRequest =
   | { type: 'ping'; requestId: string }

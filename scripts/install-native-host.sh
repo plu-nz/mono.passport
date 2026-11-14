@@ -37,12 +37,12 @@ for variant in ("Brave-Origin", "Brave-Origin-Beta", "Brave-Origin-Nightly", "Br
 for profile, extension_id in profiles:
     directory = config_home / profile / "NativeMessagingHosts"
     directory.mkdir(parents=True, exist_ok=True)
-    manifest = directory / "com.plunz.passage.json"
+    manifest = directory / "com.plunz.passport.json"
     if manifest.is_symlink():
         raise SystemExit(f"Symlinked manifest rejected: {manifest}")
     data = {
-        "name": "com.plunz.passage",
-        "description": "Passage native messaging host",
+        "name": "com.plunz.passport",
+        "description": "Passport native messaging host",
         "path": host,
         "type": "stdio",
         "allowed_origins": [f"chrome-extension://{extension_id}/"],
@@ -54,4 +54,8 @@ for profile, extension_id in profiles:
     temporary.chmod(0o600)
     temporary.replace(manifest)
     print(manifest)
+    # The host was registered as com.plunz.passage before the rename to Passport.
+    legacy = directory / "com.plunz.passage.json"
+    if legacy.is_file() and not legacy.is_symlink():
+        legacy.unlink()
 PY

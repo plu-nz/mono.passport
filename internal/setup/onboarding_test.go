@@ -12,12 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/plu-nz/mono.passage/internal/ghauth"
-	"github.com/plu-nz/mono.passage/internal/gitvault"
-	"github.com/plu-nz/mono.passage/internal/gpgkey"
+	"github.com/plu-nz/mono.passport/internal/ghauth"
+	"github.com/plu-nz/mono.passport/internal/gitvault"
+	"github.com/plu-nz/mono.passport/internal/gpgkey"
 )
 
-const cloneURL = "https://github.com/octo/passage-vault.git"
+const cloneURL = "https://github.com/octo/passport-vault.git"
 
 // computer isolates HOME, XDG config and GnuPG, as one machine.
 func computer(t *testing.T, root, name string) {
@@ -89,10 +89,10 @@ func TestCreateOnOneComputerRestoreOnAnother(t *testing.T) {
 	progress := func(step string) { steps = append(steps, step) }
 
 	computer(t, root, "first")
-	if _, err := CreateWithGitHub(context.Background(), client, account, []byte("short"), "/opt/passage", progress); err == nil {
+	if _, err := CreateWithGitHub(context.Background(), client, account, []byte("short"), "/opt/passport", progress); err == nil {
 		t.Fatal("a short master password was accepted")
 	}
-	info, err := CreateWithGitHub(context.Background(), client, account, password, "/opt/passage", progress)
+	info, err := CreateWithGitHub(context.Background(), client, account, password, "/opt/passport", progress)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestCreateOnOneComputerRestoreOnAnother(t *testing.T) {
 	if on, _ := AutoSync(); !on {
 		t.Fatal("auto sync not enabled")
 	}
-	if repo, _ := GitHubRepo(); repo != "octo/passage-vault" {
+	if repo, _ := GitHubRepo(); repo != "octo/passport-vault" {
 		t.Fatalf("GitHubRepo() = %q", repo)
 	}
 	fp, err := VaultFingerprint()
@@ -140,15 +140,15 @@ func TestCreateOnOneComputerRestoreOnAnother(t *testing.T) {
 
 	// A second computer with nothing but the GitHub account and the password.
 	computer(t, root, "second")
-	repo := ghauth.Repo{FullName: "octo/passage-vault", CloneURL: cloneURL, Private: true}
-	if _, err := RestoreFromGitHub(context.Background(), account, repo, []byte("wrong password!"), "/opt/passage", func(string) {}); !errors.Is(err, gpgkey.ErrBadPassphrase) {
+	repo := ghauth.Repo{FullName: "octo/passport-vault", CloneURL: cloneURL, Private: true}
+	if _, err := RestoreFromGitHub(context.Background(), account, repo, []byte("wrong password!"), "/opt/passport", func(string) {}); !errors.Is(err, gpgkey.ErrBadPassphrase) {
 		t.Fatalf("restore with a wrong password = %v; want ErrBadPassphrase", err)
 	}
 	if pending, _ := OnboardingPending(); pending != "restore" {
 		t.Fatalf("pending after wrong password = %q; want restore to resume", pending)
 	}
 	steps = nil
-	restored, err := RestoreFromGitHub(context.Background(), account, repo, password, "/opt/passage", progress)
+	restored, err := RestoreFromGitHub(context.Background(), account, repo, password, "/opt/passport", progress)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestCreateOnOneComputerRestoreOnAnother(t *testing.T) {
 	if out, err := insert.CombinedOutput(); err != nil {
 		t.Fatalf("pass insert on the second computer: %v %s", err, out)
 	}
-	if _, err := CreateWithGitHub(context.Background(), client, account, password, "/opt/passage", progress); err == nil {
+	if _, err := CreateWithGitHub(context.Background(), client, account, password, "/opt/passport", progress); err == nil {
 		t.Fatal("create overwrote an existing vault")
 	}
 

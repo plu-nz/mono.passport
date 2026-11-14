@@ -12,8 +12,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/plu-nz/mono.passage/internal/pairing"
-	"github.com/plu-nz/mono.passage/internal/vault"
+	"github.com/plu-nz/mono.passport/internal/pairing"
+	"github.com/plu-nz/mono.passport/internal/rename"
+	"github.com/plu-nz/mono.passport/internal/vault"
 )
 
 const maxMessage = 64 * 1024
@@ -21,6 +22,7 @@ const maxMessage = 64 * 1024
 var extensionPattern = regexp.MustCompile(`^chrome-extension://[a-p]{32}/$`)
 
 func main() {
+	rename.Migrate()
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -65,7 +67,7 @@ func run(args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(result)
 	case "approve":
 		if len(args) != 2 {
-			return errors.New("uso: passage-native-host approve CODIGO")
+			return errors.New("uso: passport-native-host approve CODIGO")
 		}
 		item, err := store.Approve(args[1])
 		if err != nil {
@@ -75,7 +77,7 @@ func run(args []string) error {
 		return nil
 	case "revoke":
 		if len(args) != 3 || !extensionPattern.MatchString(args[1]) || args[2] == "" {
-			return errors.New("usage: passage-native-host revoke ORIGIN ID")
+			return errors.New("usage: passport-native-host revoke ORIGIN ID")
 		}
 		removed, err := store.Revoke(args[1], args[2])
 		if err != nil {

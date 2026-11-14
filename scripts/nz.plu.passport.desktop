@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=Passage
+Name=Passport
 Comment=Interface for GNU pass vaults
-Exec=passage
-Icon=nz.plu.passage
+Exec=passport
+Icon=nz.plu.passport
 Terminal=false
 Categories=Utility;
 StartupNotify=true

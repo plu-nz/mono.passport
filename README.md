@@ -1,6 +1,6 @@
-# Passage
+# Passport
 
-Passage is a cross-platform interface in development for vaults compatible with [GNU `pass`](https://www.passwordstore.org/). The vault belongs to you: your encrypted files are synchronized through a private Git repository that can be hosted on a Git service or on your own infrastructure.
+Passport is a cross-platform interface in development for vaults compatible with [GNU `pass`](https://www.passwordstore.org/). The vault belongs to you: your encrypted files are synchronized through a private Git repository that can be hosted on a Git service or on your own infrastructure.
 
 This document records the requirements discussed so far. It describes the desired product, and distinguishes implemented features from planned ones.
 
@@ -21,70 +21,70 @@ To develop on Linux, install Node.js, pnpm, Go 1.26+, GNU `pass`, GPG, GTK4 and 
 ```bash
 pnpm install
 pnpm check
-pnpm --filter @passage/desktop build
+pnpm --filter @passport/desktop build
 go run ./desktop
 ```
 
-For day-to-day UI work, run `pnpm dev:desktop` instead. It starts the Vite dev server and opens the desktop app against it: changes to `desktop/src` apply live without rebuilding, while Go changes need the command to be restarted. This development instance can run next to an installed Passage.
+For day-to-day UI work, run `pnpm dev:desktop` instead. It starts the Vite dev server and opens the desktop app against it: changes to `desktop/src` apply live without rebuilding, while Go changes need the command to be restarted. This development instance can run next to an installed Passport.
 
 To generate the extension, run `pnpm build:extension` and load `extension/.output/chrome-mv3` as the unpacked extension into `brave://extensions` or `chrome://extensions`. Follow [local connector instructions](native-host/README.md) to compile it and register the extension IDs; the code shown by the popup can be approved in the desktop interface or through the CLI. To use the desktop, install GNU `pass` and GPG. The GPG key and `gpg-agent` remain under system control.
 
-Browser testing uses a vault, HTTPS server, and disposable profiles, with the original extension manifest. After building the extension and host, run `node extension/tests/browser-smoke.mjs BROWSER_PATH HOST_PATH HOST_INSTALLER_PATH SCENARIO`. The scenarios are `standard`, `usernameOnly`, `passwordOnly`, `autocompleteOff`, `ambiguousPassword`, `ambiguousUsername`, `hiddenPassword`, `transparentPassword`, `newPassword`, `iframe`, `noFields`, `githubLive` and `herokuLive`. Each scenario checks pairing, entry listing, autofill result and refusal after navigation. `*Live` scenarios only populate test fields on external pages; they do not send forms. `githubLive` passed Brave Origin and Chrome stable; `herokuLive` passed in Chrome stable, but Brave did not load this page in this environment. Recent stable Chrome does not support `--load-extension`; run the test with `PASSAGE_BROWSER_HEADED=1` to load the extension into the disposable profile via the debug protocol. The matrix passed on Chrome stable and Brave Origin; the test requires OpenSSL.
+Browser testing uses a vault, HTTPS server, and disposable profiles, with the original extension manifest. After building the extension and host, run `node extension/tests/browser-smoke.mjs BROWSER_PATH HOST_PATH HOST_INSTALLER_PATH SCENARIO`. The scenarios are `standard`, `usernameOnly`, `passwordOnly`, `autocompleteOff`, `ambiguousPassword`, `ambiguousUsername`, `hiddenPassword`, `transparentPassword`, `newPassword`, `iframe`, `noFields`, `githubLive` and `herokuLive`. Each scenario checks pairing, entry listing, autofill result and refusal after navigation. `*Live` scenarios only populate test fields on external pages; they do not send forms. `githubLive` passed Brave Origin and Chrome stable; `herokuLive` passed in Chrome stable, but Brave did not load this page in this environment. Recent stable Chrome does not support `--load-extension`; run the test with `PASSPORT_BROWSER_HEADED=1` to load the extension into the disposable profile via the debug protocol. The matrix passed on Chrome stable and Brave Origin; the test requires OpenSSL.
 
 ### Get started: GitHub and a master password
 
-When no vault exists, Passage opens a welcome screen.
+When no vault exists, Passport opens a welcome screen.
 
-- **Create my vault**: sign in with GitHub (Passage shows a code to enter on github.com; there is no terminal and no GitHub CLI), then create a master password. Passage suggests a six-word passphrase and refuses weak passwords. It then generates a GPG key protected by that password, creates a `pass` vault in `~/.password-store`, creates the private repository `passage-vault` on your account, uploads the vault, and saves an encrypted recovery copy of the key. Print the emergency kit it offers and keep it with your written-down password.
-- **I already have a vault**: on another computer, sign in to the same GitHub account and type the master password. Passage downloads the vault, opens the recovery copy, adds the key to this computer and unlocks it.
+- **Create my vault**: sign in with GitHub (Passport shows a code to enter on github.com; there is no terminal and no GitHub CLI), then create a master password. Passport suggests a six-word passphrase and refuses weak passwords. It then generates a GPG key protected by that password, creates a `pass` vault in `~/.password-store`, creates the private repository `passport-vault` on your account, uploads the vault, and saves an encrypted recovery copy of the key. Print the emergency kit it offers and keep it with your written-down password.
+- **I already have a vault**: on another computer, sign in to the same GitHub account and type the master password. Passport downloads the vault, opens the recovery copy, adds the key to this computer and unlocks it.
 
-The master password is the GPG passphrase. Passage unlocks the key in `gpg-agent`, so the browser extension and `pass` in the terminal work without another prompt until the agent forgets it; **Lock** (toolbar or **Settings → Security and sync**) forgets it for this key only. Saving an entry syncs it in the background, Passage pulls changes when it starts and every minute, and the toolbar shows **Synced**, **Offline** or **Needs attention**. **Change master password** updates the key and the recovery copy together; other computers adopt the new password the next time it is typed there. **Use in other apps** saves the key, still protected by the master password, for `pass`, browserpass or Android Password Store.
+The master password is the GPG passphrase. Passport unlocks the key in `gpg-agent`, so the browser extension and `pass` in the terminal work without another prompt until the agent forgets it; **Lock** (toolbar or **Settings → Security and sync**) forgets it for this key only. Saving an entry syncs it in the background, Passport pulls changes when it starts and every minute, and the toolbar shows **Synced**, **Offline** or **Needs attention**. **Change master password** updates the key and the recovery copy together; other computers adopt the new password the next time it is typed there. **Use in other apps** saves the key, still protected by the master password, for `pass`, browserpass or Android Password Store.
 
-The vault stays a standard `pass` store on `main`. The recovery copy lives on a separate branch, `passage-recovery`, as one commit holding the exported key wrapped with Argon2id and XChaCha20-Poly1305 under the master password. Nobody can recover a forgotten master password. Anyone with access to the repository can try to guess it offline, so the password strength and the security of the GitHub account (use two-factor authentication) protect the vault. The GitHub sign-in is saved in the system keyring (Secret Service), or in a file only your user can read when there is none. **Sign out** forgets it here; remove Passage's access on GitHub under *Settings → Applications → Authorized OAuth Apps*. See [the onboarding plan](docs/simple-onboarding-plan.md) for the design.
+The vault stays a standard `pass` store on `main`. The recovery copy lives on a separate branch, `passport-recovery`, as one commit holding the exported key wrapped with Argon2id and XChaCha20-Poly1305 under the master password. Nobody can recover a forgotten master password. Anyone with access to the repository can try to guess it offline, so the password strength and the security of the GitHub account (use two-factor authentication) protect the vault. The GitHub sign-in is saved in the system keyring (Secret Service), or in a file only your user can read when there is none. **Sign out** forgets it here; remove Passport's access on GitHub under *Settings → Applications → Authorized OAuth Apps*. See [the onboarding plan](docs/simple-onboarding-plan.md) for the design.
 
 ### Advanced: open or create a vault manually
 
 The manual setup lives under **Settings → Advanced**, and the welcome screen links to it.
 
 
-In the **Vault** panel, enter the absolute directory path and choose **Open existing** for a vault already initialized with `.gpg-id`. To create, choose a private GPG key from the list and click **Create Vault**, or open **Create GPG Key and Vault** to generate a new key via GPG and initialize the vault in sequence. The passphrase is requested by the system's `pinentry`; Passage does not receive it. Passage uses `pass init` to create the GNU pass-compatible structure. To open a vault from another device, import the corresponding private key before trying to read the entries.
+In the **Vault** panel, enter the absolute directory path and choose **Open existing** for a vault already initialized with `.gpg-id`. To create, choose a private GPG key from the list and click **Create Vault**, or open **Create GPG Key and Vault** to generate a new key via GPG and initialize the vault in sequence. The passphrase is requested by the system's `pinentry`; Passport does not receive it. Passport uses `pass init` to create the GNU pass-compatible structure. To open a vault from another device, import the corresponding private key before trying to read the entries.
 
-After you create a new key, keep a secure copy of the private key and passphrase. Git only syncs encrypted files in the vault; losing your private key prevents you from recovering your passwords. Passage shows the fingerprint of the created key and does not automatically export secret material. Key creation is a separate operation from vault initialization: if the second step fails, the generated key remains in GPG and can be used to try to create the vault again.
+After you create a new key, keep a secure copy of the private key and passphrase. Git only syncs encrypted files in the vault; losing your private key prevents you from recovering your passwords. Passport shows the fingerprint of the created key and does not automatically export secret material. Key creation is a separate operation from vault initialization: if the second step fails, the generated key remains in GPG and can be used to try to create the vault again.
 
 To back up, replace `FINGERPRINT` with the fingerprint shown in the app and choose a secure destination outside of the Git repository:
 
 ```sh
 umask 077
-gpg --armor --export-secret-keys FINGERPRINT > /safe/path/passage-secret-key.asc
+gpg --armor --export-secret-keys FINGERPRINT > /safe/path/passport-secret-key.asc
 ```
 
-To restore to another device, copy the backup file to a secure location and run `gpg --import /safe/path/passage-secret-key.asc`. Then confirm the key with `gpg --list-secret-keys --fingerprint` and test the reading of an entry with `PASSWORD_STORE_DIR=/path/to/vault pass show ENTRY`. Export, import and reading were verified with a disposable key and vault. Store the backup separately from the Git vault.
+To restore to another device, copy the backup file to a secure location and run `gpg --import /safe/path/passport-secret-key.asc`. Then confirm the key with `gpg --list-secret-keys --fingerprint` and test the reading of an entry with `PASSWORD_STORE_DIR=/path/to/vault pass show ENTRY`. Export, import and reading were verified with a disposable key and vault. Store the backup separately from the Git vault.
 
-The chosen directory is saved in the local Passage configuration and is used by the desktop and the extensions connector. `PASSWORD_STORE_DIR`, when defined in the process environment, has priority and prevents changing the directory via the interface. In the terminal, to use a vault outside of `~/.password-store`, define the same variable, for example `PASSWORD_STORE_DIR=/path/to/vault pass ls`.
+The chosen directory is saved in the local Passport configuration and is used by the desktop and the extensions connector. `PASSWORD_STORE_DIR`, when defined in the process environment, has priority and prevents changing the directory via the interface. In the terminal, to use a vault outside of `~/.password-store`, define the same variable, for example `PASSWORD_STORE_DIR=/path/to/vault pass ls`.
 
 ### Create and edit entries
 
-With the vault open, click **New** and, in the dialog that opens, enter the entry path, password, username and URL. Passage writes via GNU `pass`: the password is on the first line, followed by `login:` and `url:`. The **Other Pass Lines** field accepts additional metadata, such as `otpauth:` or annotations. To edit an entry, open it and click **Edit**. To remove it, click **Delete** and confirm. These operations check whether the encrypted file has changed since reading; in this case, update the entry before trying again. The opened password is removed from the interface after 30 seconds; the creation form closes after 30 seconds without changing the password. The operation does not automatically make `git push`.
+With the vault open, click **New** and, in the dialog that opens, enter the entry path, password, username and URL. Passport writes via GNU `pass`: the password is on the first line, followed by `login:` and `url:`. The **Other Pass Lines** field accepts additional metadata, such as `otpauth:` or annotations. To edit an entry, open it and click **Edit**. To remove it, click **Delete** and confirm. These operations check whether the encrypted file has changed since reading; in this case, update the entry before trying again. The opened password is removed from the interface after 30 seconds; the creation form closes after 30 seconds without changing the password. The operation does not automatically make `git push`.
 
 ### Generate passwords
 
-The **Generator** tab creates a random password with the browser's cryptographic generator. Choose the length (5 to 128), the character sets (A–Z, a–z, 0–9 and `!@#$%^&*`), whether to avoid ambiguous characters such as `l`, `1`, `O` and `0`, and the minimum count of numbers and special characters. **Copy** puts the password on the clipboard and clears it after 45 seconds if it is still there; **Create login** opens a new entry with the password filled in. Passage remembers the options on this device, never the generated password.
+The **Generator** tab creates a random password with the browser's cryptographic generator. Choose the length (5 to 128), the character sets (A–Z, a–z, 0–9 and `!@#$%^&*`), whether to avoid ambiguous characters such as `l`, `1`, `O` and `0`, and the minimum count of numbers and special characters. **Copy** puts the password on the clipboard and clears it after 45 seconds if it is still there; **Create login** opens a new entry with the password filled in. Passport remembers the options on this device, never the generated password.
 
 ### Advanced: connect a vault through the GitHub CLI
 
-Install [GitHub CLI (`gh`)](https://cli.github.com/). In **Settings → Git sync**, click **Sign in with GitHub**. Passage opens `gh auth login` in the default terminal; Complete your browser login and return to Passage to click **Check account**. If the default terminal cannot be opened, run `gh auth login --web` manually. The token is managed by `gh`, which can use secure system storage or, if that is not available, a local file; check `gh auth status` for the location used.
+Install [GitHub CLI (`gh`)](https://cli.github.com/). In **Settings → Git sync**, click **Sign in with GitHub**. Passport opens `gh auth login` in the default terminal; Complete your browser login and return to Passport to click **Check account**. If the default terminal cannot be opened, run `gh auth login --web` manually. The token is managed by `gh`, which can use secure system storage or, if that is not available, a local file; check `gh auth status` for the location used.
 
-If the vault is already the root of a Git repository, **Use in this vault** only configures that vault's `.git/config` to ask `gh` for the HTTPS remote credentials on `github.com`. Passage does not receive or save the token. This step does not create a remote repository or change the existing remote; configure the URL and tracking branch via Git or `pass git`. SSH remotes and private Git servers continue to use their normal authentication.
+If the vault is already the root of a Git repository, **Use in this vault** only configures that vault's `.git/config` to ask `gh` for the HTTPS remote credentials on `github.com`. Passport does not receive or save the token. This step does not create a remote repository or change the existing remote; configure the URL and tracking branch via Git or `pass git`. SSH remotes and private Git servers continue to use their normal authentication.
 
-On the same dashboard, **Start Git in this vault** creates a local repository in the `main` branch if the directory doesn't already have `.git`. **Add remote origin** registers the given URL without replacing an existing remote. Create an empty private Git repository first. **Publish new vault** checks that the remote has no history, creates the first commit with only `.gpg-id` and `.gpg` files (if there is no commit yet) and configures the upstream. The action rejects extra files, symbolic links, and files already staged in Git; never force shipping. If the remote already has history, resolve this connection through Git before syncing through Passage. The GPG private key remains outside the remote. Future changes can be registered with `pass git` on the terminal.
+On the same dashboard, **Start Git in this vault** creates a local repository in the `main` branch if the directory doesn't already have `.git`. **Add remote origin** registers the given URL without replacing an existing remote. Create an empty private Git repository first. **Publish new vault** checks that the remote has no history, creates the first commit with only `.gpg-id` and `.gpg` files (if there is no commit yet) and configures the upstream. The action rejects extra files, symbolic links, and files already staged in Git; never force shipping. If the remote already has history, resolve this connection through Git before syncing through Passport. The GPG private key remains outside the remote. Future changes can be registered with `pass git` on the terminal.
 
-To retrieve a vault already published on another installation, enter a directory that does not yet exist and the repository URL in the **Vault** panel, then click **Clone existing vault**. The remote must have the branch `main` and `.gpg-id` in the root. Passage selects the vault after the clone; To open the entries, import the corresponding private GPG key separately. The clone uses the Git authentication already available on the system and does not modify an existing directory.
+To retrieve a vault already published on another installation, enter a directory that does not yet exist and the repository URL in the **Vault** panel, then click **Clone existing vault**. The remote must have the branch `main` and `.gpg-id` in the root. Passport selects the vault after the clone; To open the entries, import the corresponding private GPG key separately. The clone uses the Git authentication already available on the system and does not modify an existing directory.
 
-After creating, editing or deleting entries, **Record Changes** creates a commit with only files `.gpg` and `.gpg-id`; files outside this format, symbolic links or `.gpg` without encrypted OpenPGP packets cause the operation to stop. **Download** and **Upload** remain separate actions. If the histories diverge, **Preserve Both Versions** merges the commits and keeps the local version of each conflicting `.gpg` under its original name, saving the remote version as `nome.remote-HASH.gpg`. Review these entries after the merge and submit when you are satisfied. Conflicts in `.gpg-id`, concurrent removals, and renames require manual resolution via Git. Passage creates backup refs on `refs/passage/backup/` before the merge attempt.
+After creating, editing or deleting entries, **Record Changes** creates a commit with only files `.gpg` and `.gpg-id`; files outside this format, symbolic links or `.gpg` without encrypted OpenPGP packets cause the operation to stop. **Download** and **Upload** remain separate actions. If the histories diverge, **Preserve Both Versions** merges the commits and keeps the local version of each conflicting `.gpg` under its original name, saving the remote version as `nome.remote-HASH.gpg`. Review these entries after the merge and submit when you are satisfied. Conflicts in `.gpg-id`, concurrent removals, and renames require manual resolution via Git. Passport creates backup refs on `refs/passport/backup/` before the merge attempt.
 
 ### TOTP and extension blocking
 
-To generate a code, store a URI `otpauth://totp/...` in a line of the entry, as `pass-otp` does, open the entry, and click **Generate TOTP Code**. Passage also reads a `otpauth: URI` line. The code stays in memory and disappears when it expires or after closing the entry; it is not recorded in the vault.
+To generate a code, store a URI `otpauth://totp/...` in a line of the entry, as `pass-otp` does, open the entry, and click **Generate TOTP Code**. Passport also reads a `otpauth: URI` line. The code stays in memory and disappears when it expires or after closing the entry; it is not recorded in the vault.
 
 In **Settings → Browser extensions**, **Lock extensions** prevents further reading by the Native Messaging host, even if the GPG key is cached. **Unlock extensions** restores this access. The state persists until further action; blocking does not close the `gpg-agent` cache and does not prevent `pass show` in the terminal. An order already in progress may end before the block is applied.
 
@@ -93,14 +93,14 @@ In **Settings → Browser extensions**, **Lock extensions** prevents further rea
 On Linux x86_64, with `curl`, `tar` and `sha256sum`. Releases after `v0.2.1` need GTK4 and WebKitGTK 6.0 (for example Ubuntu 24.04, Debian 13, Fedora 39, or Arch Linux); `v0.2.1` and earlier use GTK3 and WebKit2GTK 4.1:
 
 ```sh
-curl -LsSf https://passage.plu.nz/install.sh | sh
+curl -LsSf https://passport.plu.nz/install.sh | sh
 ```
 
-The script downloads the ready-made binary from [latest release](https://github.com/plu-nz/mono.passage/releases/latest), checks SHA-256 and installs `~/.local/bin/passage` with a menu shortcut. Starting from `v0.2.1`, the package installs the unpacked extension to `~/.local/share/passage/extension-chromium` (or to `XDG_DATA_HOME/passage/extension-chromium`) and automatically registers the host for Brave and Chrome. Upload this folder once to `brave://extensions` and `chrome://extensions`, with developer mode enabled, and approve each browser in **Settings → Browser extensions**. The ID of the unzipped extension is fixed: `edmjpcolampgjbnmldchmnkinmhakjgm`. You don't need to clone the repository or install Node.js, pnpm or Go to use the release. GNU `pass`, GPG, Git, Python 3, GTK4 and WebKitGTK 6.0 are runtime dependencies; the installer prints the command to install the first three when they are missing. `~/.local/bin` must be in the session's `PATH`.
+The script downloads the ready-made binary from [latest release](https://github.com/plu-nz/mono.passport/releases/latest), checks SHA-256 and installs `~/.local/bin/passport` with a menu shortcut. Starting from `v0.2.1`, the package installs the unpacked extension to `~/.local/share/passport/extension-chromium` (or to `XDG_DATA_HOME/passport/extension-chromium`) and automatically registers the host for Brave and Chrome. Upload this folder once to `brave://extensions` and `chrome://extensions`, with developer mode enabled, and approve each browser in **Settings → Browser extensions**. The ID of the unzipped extension is fixed: `edmjpcolampgjbnmldchmnkinmhakjgm`. You don't need to clone the repository or install Node.js, pnpm or Go to use the release. GNU `pass`, GPG, Git, Python 3, GTK4 and WebKitGTK 6.0 are runtime dependencies; the installer prints the command to install the first three when they are missing. `~/.local/bin` must be in the session's `PATH`.
 
-The same command upgrades an existing installation to the latest release. Close and open Passage after updating and click **Reload** on the extension in `brave://extensions` and `chrome://extensions` to apply the new version. The installed version changes only when a new release is published.
+The same command upgrades an existing installation to the latest release. Close and open Passport after updating and click **Reload** on the extension in `brave://extensions` and `chrome://extensions` to apply the new version. The installed version changes only when a new release is published.
 
-The extension identity public key is at `extension/identity.json`. The corresponding private key was generated outside the repository, in `~/.local/share/passage/signing/extension.pem`, with access permission only to the user. Make an **encrypted** backup of it outside the Git vault; do not include it in the repository or package. It is required if a CRX distribution signed with the same ID is adopted. The unpacked extension only works with the public key from the manifest. A future store publication needs to confirm how to preserve the same ID before migration.
+The extension identity public key is at `extension/identity.json`. The corresponding private key was generated outside the repository, in `~/.local/share/passport/signing/extension.pem`, with access permission only to the user. Make an **encrypted** backup of it outside the Git vault; do not include it in the repository or package. It is required if a CRX distribution signed with the same ID is adopted. The unpacked extension only works with the public key from the manifest. A future store publication needs to confirm how to preserve the same ID before migration.
 
 To publish a new Linux version from `main`, run with write access to the repository:
 
@@ -119,10 +119,10 @@ The [execution plan](docs/execution-plan.md) details the Linux desktop and exten
 ## Principles
 
 - The vault format remains compatible with GNU `pass`: a tree of `.gpg` files encrypted with OpenPGP.
-- The terminal is a first-class interface. User can continue using `pass` and `pass git` without opening Passage.
-- Private Git repositories transport the encrypted files. Unlock passwords and Git access credentials never go into the vault repository. The private key goes there only for vaults Passage creates, sealed with the master password on the separate `passage-recovery` branch.
+- The terminal is a first-class interface. User can continue using `pass` and `pass git` without opening Passport.
+- Private Git repositories transport the encrypted files. Unlock passwords and Git access credentials never go into the vault repository. The private key goes there only for vaults Passport creates, sealed with the master password on the separate `passport-recovery` branch.
 - The same vault should be usable on desktop, Android, terminal, and the web, without relying on a server that knows the passwords in plaintext.
-- The project must leverage existing components of the `pass` ecosystem when they meet the requirements; Passage-specific interface and integrations will be built where there are gaps.
+- The project must leverage existing components of the `pass` ecosystem when they meet the requirements; Passport-specific interface and integrations will be built where there are gaps.
 
 ## Platforms and forms of access
 
@@ -130,7 +130,7 @@ The [execution plan](docs/execution-plan.md) details the Linux desktop and exten
 | --- | --- |
 | **Desktop** | Application to consult and manage the vault. Linux is the first platform. |
 | **Android** | Application to consult and manage the same vault, with integration for filling in system credentials. |
-| **Pure terminal** | Direct use of GNU `pass` and its Git commands, independent of Passage applications. |
+| **Pure terminal** | Direct use of GNU `pass` and its Git commands, independent of Passport applications. |
 | **Pure web** | Page accessible in a browser, including on another computer, capable of opening the vault without an application or desktop connector installed. |
 
 iOS support is desirable in the future if technically feasible, but is out of initial scope.
@@ -142,11 +142,11 @@ MVP delivers **desktop application for Linux and extensions for Brave and Chrome
 - The desktop application opens the existing vault, allows you to search and query logins and controls access to extensions.
 - The extensions share an implementation for Chromium browsers, are individually paired with the desktop, and allow you to revoke each pairing.
 - The extension identifies the open website, presents the corresponding entries and fills in the username and password after a user action.
-- The vault remains usable by GNU `pass` in the terminal. Changes made by Passage must maintain compatibility of `.gpg` files.
+- The vault remains usable by GNU `pass` in the terminal. Changes made by Passport must maintain compatibility of `.gpg` files.
 - Desktop offers synchronization with private Git and presents conflicts to the user without silently overwriting an entry.
 - The blocking behavior must be consistent with direct access by the `pass` and the `gpg-agent` cache.
 
-**Existing integrations during MVP:** GNU `pass` covers the terminal; the [Android Password Store](https://github.com/agrahn/Android-Password-Store) fork covers Android. Passage does not need to implement its own CLI or Android app to validate the MVP.
+**Existing integrations during MVP:** GNU `pass` covers the terminal; the [Android Password Store](https://github.com/agrahn/Android-Password-Store) fork covers Android. Passport does not need to implement its own CLI or Android app to validate the MVP.
 
 **Further evolution:** independent web client, own Android application if the existing one leaves gaps, iOS if viable, passkeys and a biometric unlocking model that protects the key also on the first access after starting the system. TOTP can be evaluated at MVP if the existing format works without expanding the scope of integrations.
 
@@ -188,7 +188,7 @@ MVP delivers **desktop application for Linux and extensions for Brave and Chrome
 
 ## Sync and recovery
 
-- Use a **private Git repository for the vault**, separate from the `plu-nz/mono.passage` code repository.
+- Use a **private Git repository for the vault**, separate from the `plu-nz/mono.passport` code repository.
 - Accept hosting on GitHub or a private Git server, including on the user's NAS.
 - Detect simultaneous changes. Conflicts in the same entry cannot be resolved silently, as `.gpg` files do not support useful textual merging.
 - Provide PGP key backup and recovery. Losing your cell phone, biometric reader or device cannot be the only cause of permanent loss of your vault.

@@ -8,7 +8,7 @@ import { ChangePasswordDialog, EmergencyKit, ExportKeyDialog } from './account';
 import { GitHubSignIn, Onboarding, UnlockScreen, type GitHubAccount, type OnboardingStatus } from './onboarding';
 import { generatePassword, loadOptions, maxLength, maxMinimum, minLength, normalize, saveOptions, specialChars, type GeneratorOptions } from './generator';
 import { version as appVersion } from '../package.json';
-import type { VaultState } from '@passage/core';
+import type { VaultState } from '@passport/core';
 import './style.css';
 import './theme';
 
@@ -189,7 +189,7 @@ function App() {
   };
   onMount(() => { void refreshBrowserLock(); });
 
-  // A vault Passage created or restored is opened with the master password in
+  // A vault Passport created or restored is opened with the master password in
   // the app; other vaults keep using pinentry.
   const managedRepo = () => onboardingStatus()?.managedRepo || '';
   const refreshOnboarding = async () => {
@@ -233,7 +233,7 @@ function App() {
       if (on) await runSync();
     } catch (cause) { setGitError(String(cause)); }
   };
-  onCleanup(Events.On('passage:sync', event => setSyncState(event.data as SyncState)));
+  onCleanup(Events.On('passport:sync', event => setSyncState(event.data as SyncState)));
   onMount(async () => {
     await refreshOnboarding();
     await refreshAccount();
@@ -249,7 +249,7 @@ function App() {
   const syncDescription = () => {
     const current = syncState();
     const at = current.at ? ` at ${new Date(current.at).toLocaleTimeString()}` : '';
-    return current.state === 'synced' ? `Synced${at}.` : current.state === 'syncing' ? 'Syncing…' : current.state === 'off' ? 'Passage syncs only when you pull or push.' : current.message || syncLabels[current.state];
+    return current.state === 'synced' ? `Synced${at}.` : current.state === 'syncing' ? 'Syncing…' : current.state === 'off' ? 'Passport syncs only when you pull or push.' : current.message || syncLabels[current.state];
   };
   createEffect(() => {
     if (!secret()) return;
@@ -545,7 +545,7 @@ function App() {
     await refreshGit();
     setActiveTab('vault');
   }
-  return <Theme class="passage" accent="red" shape="square">{showWizard()
+  return <Theme class="passport" accent="red" shape="square">{showWizard()
     ? <Onboarding status={onboardingStatus()!} onDone={() => void finishOnboarding()} onAdvanced={() => { setSkipWizard(true); setActiveTab('settings'); }} />
     : keyLocked() ? <UnlockScreen repo={managedRepo()} onUnlocked={() => { setKeyLocked(false); void reloadEntries(); }} />
     : <main class="shell">
@@ -576,12 +576,12 @@ function App() {
       {account()?.signedIn ? <p class="status-line"><span class="status-dot ready" />GitHub: <strong>@{account().login}</strong></p> : <p>Not signed in to GitHub. Sync is paused until you sign in again.</p>}
       {managedRepo() && <p class="hint">Vault repository: <code>{managedRepo()}</code></p>}
       {account()?.insecure && <p class="panel-error">No system keyring was found, so the GitHub sign-in is saved in a file only your user can read.</p>}
-      {account()?.signedIn ? <div class="panel-actions"><Button variant="outline" size="sm" onClick={() => void signOut()}>Sign out</Button><Button variant="ghost" size="sm" onClick={() => void invoke('open_revoke_page')}>Remove Passage's access on GitHub</Button></div> : <GitHubSignIn label="Sign in again" onSignedIn={signed => { setAccount(signed); void runSync(); }} />}
+      {account()?.signedIn ? <div class="panel-actions"><Button variant="outline" size="sm" onClick={() => void signOut()}>Sign out</Button><Button variant="ghost" size="sm" onClick={() => void invoke('open_revoke_page')}>Remove Passport's access on GitHub</Button></div> : <GitHubSignIn label="Sign in again" onSignedIn={signed => { setAccount(signed); void runSync(); }} />}
       {accountError() && <p class="panel-error" role="alert">{accountError()}</p>}
     </Card>}
     {activeTab() === 'settings' && state().kind === 'available' && <Card class="panel vault-panel" aria-label="Security and sync">
       <h2>Security and sync</h2>
-      {managedRepo() && <><div class="panel-actions"><Button variant="outline" size="sm" onClick={() => void lockNow()}>Lock now</Button><Button variant="outline" size="sm" onClick={() => setAccountDialog('password')}>Change master password</Button><Button variant="outline" size="sm" onClick={() => setAccountDialog('kit')}>Emergency kit</Button><Button variant="ghost" size="sm" onClick={() => setAccountDialog('export')}>Use in other apps</Button></div><p class="hint">Locking forgets the master password for Passage, the browser extension and <code>pass</code> in the terminal.</p></>}
+      {managedRepo() && <><div class="panel-actions"><Button variant="outline" size="sm" onClick={() => void lockNow()}>Lock now</Button><Button variant="outline" size="sm" onClick={() => setAccountDialog('password')}>Change master password</Button><Button variant="outline" size="sm" onClick={() => setAccountDialog('kit')}>Emergency kit</Button><Button variant="ghost" size="sm" onClick={() => setAccountDialog('export')}>Use in other apps</Button></div><p class="hint">Locking forgets the master password for Passport, the browser extension and <code>pass</code> in the terminal.</p></>}
       <label class="check"><input type="checkbox" checked={autoSync()} disabled={!git()?.upstream} onChange={event => void changeAutoSync(event.currentTarget.checked)} />Sync automatically</label>
       <p class="hint">{git()?.upstream ? syncDescription() : 'Connect the vault to a remote in Advanced to sync it.'}</p>
       {autoSync() && git()?.upstream && <Button variant="outline" size="sm" disabled={syncState().state === 'syncing'} onClick={() => void runSync()}>Sync now</Button>}
@@ -597,7 +597,7 @@ function App() {
       <div class="panel-actions"><select id="refresh-seconds" value={String(refreshSeconds())} onChange={event => void changeRefreshSeconds(Number(event.currentTarget.value))}>
         {refreshChoices.map(([seconds, label]) => <option value={String(seconds)}>{label}</option>)}
       </select></div>
-      <p class="hint">Reloads the list so entries added or removed with <code>pass</code> or Git appear without reopening Passage.</p>
+      <p class="hint">Reloads the list so entries added or removed with <code>pass</code> or Git appear without reopening Passport.</p>
       {refreshError() && <p class="panel-error" role="alert">{refreshError()}</p>}
     </Card>}
     {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="Browser extensions">
@@ -623,7 +623,7 @@ function App() {
       <div class="panel-actions"><input aria-label="Existing Git vault URL" value={cloneRemote()} onInput={event => setCloneRemote(event.currentTarget.value)} placeholder="Private Git repository URL" autocomplete="off" disabled={vaultBusy() || vaultInfo()?.source === 'environment'} /><Button variant="outline" size="sm" disabled={vaultBusy() || !vaultPath().trim() || !cloneRemote().trim() || vaultInfo()?.source === 'environment'} onClick={() => void cloneVault()}>Clone existing vault</Button></div>
       <p class="hint">To clone, enter a new directory and the URL of a remote with a main branch. The private GPG key must be available on this computer to open entries.</p>
       <details class="key-creation"><summary>Create GPG key and vault</summary>
-        <p>GPG opens a system prompt to set the passphrase. Passage never receives it. Cancel in that prompt if you change your mind.</p>
+        <p>GPG opens a system prompt to set the passphrase. Passport never receives it. Cancel in that prompt if you change your mind.</p>
         <div class="panel-actions"><input aria-label="New key name" value={newKeyName()} onInput={event => setNewKeyName(event.currentTarget.value)} placeholder="Your name" autocomplete="name" disabled={vaultBusy()} /><input aria-label="New key email" type="email" value={newKeyEmail()} onInput={event => setNewKeyEmail(event.currentTarget.value)} placeholder="you@example.com" autocomplete="email" disabled={vaultBusy()} /></div>
         <Button variant="outline" size="sm" disabled={vaultBusy() || !vaultPath().trim() || !newKeyName().trim() || !newKeyEmail().trim() || !vaultInfo()?.passInstalled || !vaultInfo()?.gpgInstalled || vaultInfo()?.source === 'environment'} onClick={() => void createKeyAndVault()}>{vaultBusy() ? 'Please wait…' : 'Create key and vault'}</Button>
       </details>
@@ -638,7 +638,7 @@ function App() {
       <p>{!github() ? 'Checking account…' : !github().cli_installed ? 'Install GitHub CLI (gh) to connect your account.' : github().login ? `Connected as @${github().login}.` : 'No GitHub account connected through gh.'} {github()?.vault_git_configured ? 'This vault uses your gh account for GitHub HTTPS remotes.' : ''}</p>
       <div class="panel-actions"><Button variant="outline" size="sm" disabled={!github()?.cli_installed} onClick={() => void connectGithub()}>{github()?.login ? 'Switch account' : 'Sign in with GitHub'}</Button><Button variant="outline" size="sm" onClick={() => void refreshGithub()}>Check account</Button><Button variant="outline" size="sm" disabled={!github()?.login || !git()} onClick={() => void configureGithubVault()}>Use for this vault</Button></div>
       {githubError() && <p class="panel-error" role="alert">{githubError()}</p>}
-      <p class="hint">Sign-in opens GitHub CLI in a terminal. After completing it in your browser, click Check account. gh manages your account; Passage does not store the token. Use for this vault configures only this local Git repository for GitHub HTTPS remotes.</p>
+      <p class="hint">Sign-in opens GitHub CLI in a terminal. After completing it in your browser, click Check account. gh manages your account; Passport does not store the token. Use for this vault configures only this local Git repository for GitHub HTTPS remotes.</p>
       {git() ? <p>Branch {git().branch}{git().upstream ? ` · upstream ${git().upstream}` : ' · no upstream'} · {git().dirty ? 'local changes' : 'no local changes'} · ↑{git().ahead} ↓{git().behind}</p> : <p>This vault is not ready for Git sync yet.</p>}
       {!git() && state().kind === 'available' && <Button variant="outline" size="sm" onClick={() => void setupGit('git_initialize')}>Initialize Git in this vault</Button>}
       {git() && !git().upstream && <><div class="panel-actions"><input aria-label="Git origin remote URL" value={gitRemote()} onInput={event => setGitRemote(event.currentTarget.value)} placeholder="HTTPS URL, SSH URL, or remote path" autocomplete="off" /><Button variant="outline" size="sm" disabled={!gitRemote().trim()} onClick={() => void setupGit('git_set_remote')}>Add origin remote</Button></div><Button variant="outline" size="sm" onClick={() => void setupGit('git_publish_new_vault')}>Publish new vault</Button><p class="hint">This creates the first commit using only .gpg and .gpg-id files and sets the upstream if the remote is empty. Connect a remote with existing history through Git. Future changes remain available through  <code>pass git</code>.</p></>}
@@ -650,7 +650,7 @@ function App() {
     </details>}
     {activeTab() === 'settings' && <Card class="panel vault-panel" aria-label="About">
       <h2>About</h2>
-      <p class="hint">Passage {appVersion}</p>
+      <p class="hint">Passport {appVersion}</p>
     </Card>}
     {activeTab() === 'vault' && (state().kind !== 'available' ? <section class="notice">{state().kind === 'onboarding' ? 'Setting up the vault was interrupted.' : (state() as { reason: string }).reason}{(state().kind === 'onboarding' || (vaultInfo() && !vaultInfo().initialized && vaultInfo().source !== 'environment')) && <Button size="sm" onClick={() => setSkipWizard(false)}>{state().kind === 'onboarding' ? 'Continue setup' : 'Set up with GitHub'}</Button>}</section> : <>
       <div class="workspace"><nav aria-label="Vault entries">{filtered().length ? filtered().map(entry => <button class={selected() === entry.id ? 'entry selected' : 'entry'} onClick={() => void openEntry(entry.id)}><span class="entry-icon" aria-hidden="true">{entry.title.slice(0, 2).toUpperCase()}</span><span class="entry-text"><strong>{entry.title}</strong><small>{entry.id}</small></span><span class="entry-chevron" aria-hidden="true">›</span></button>) : <p>No entries found.</p>}</nav>

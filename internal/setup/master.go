@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/plu-nz/mono.passage/internal/gitvault"
-	"github.com/plu-nz/mono.passage/internal/gpgkey"
-	"github.com/plu-nz/mono.passage/internal/recovery"
+	"github.com/plu-nz/mono.passport/internal/gitvault"
+	"github.com/plu-nz/mono.passport/internal/gpgkey"
+	"github.com/plu-nz/mono.passport/internal/recovery"
 )
 
 func managedGit() (*gitvault.GitVault, bool, error) {
@@ -38,7 +38,7 @@ func publishRecovery(g *gitvault.GitVault, fingerprint string, password []byte) 
 	return g.PublishRecovery(sealed)
 }
 
-// ChangeMasterPassword re-protects the vault key and, for a vault Passage
+// ChangeMasterPassword re-protects the vault key and, for a vault Passport
 // manages, replaces the recovery copy. If the new copy cannot be uploaded the
 // change is undone, so the key and the copy never disagree.
 func ChangeMasterPassword(old, new []byte) error {

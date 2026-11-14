@@ -5,33 +5,33 @@ package main
 #include <stdlib.h>
 #include <gtk/gtk.h>
 
-extern void passageGtkSettingsChanged(void);
+extern void passportGtkSettingsChanged(void);
 
-static GtkWidget *passage_probe = NULL;
+static GtkWidget *passport_probe = NULL;
 
-// passage_lookup_color resolves a named color (@define-color) from the active
+// passport_lookup_color resolves a named color (@define-color) from the active
 // GTK theme. It returns FALSE when the theme does not define the name.
-static gboolean passage_lookup_color(const char *name, GdkRGBA *out) {
-	if (passage_probe == NULL) {
-		passage_probe = g_object_ref_sink(gtk_label_new(NULL));
+static gboolean passport_lookup_color(const char *name, GdkRGBA *out) {
+	if (passport_probe == NULL) {
+		passport_probe = g_object_ref_sink(gtk_label_new(NULL));
 	}
 	G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-	gboolean found = gtk_style_context_lookup_color(gtk_widget_get_style_context(passage_probe), name, out);
+	gboolean found = gtk_style_context_lookup_color(gtk_widget_get_style_context(passport_probe), name, out);
 	G_GNUC_END_IGNORE_DEPRECATIONS
 	return found;
 }
 
-static char *passage_font_name(void) {
+static char *passport_font_name(void) {
 	char *font = NULL;
 	g_object_get(gtk_settings_get_default(), "gtk-font-name", &font, NULL);
 	return font;
 }
 
-static void passage_settings_notify(GObject *object, GParamSpec *pspec, gpointer data) {
-	passageGtkSettingsChanged();
+static void passport_settings_notify(GObject *object, GParamSpec *pspec, gpointer data) {
+	passportGtkSettingsChanged();
 }
 
-static void passage_watch_settings(void) {
+static void passport_watch_settings(void) {
 	GtkSettings *settings = gtk_settings_get_default();
 	const char *signals[] = {
 		"notify::gtk-theme-name",
@@ -40,7 +40,7 @@ static void passage_watch_settings(void) {
 		"notify::gtk-font-name",
 	};
 	for (guint i = 0; i < G_N_ELEMENTS(signals); i++) {
-		g_signal_connect(settings, signals[i], G_CALLBACK(passage_settings_notify), NULL);
+		g_signal_connect(settings, signals[i], G_CALLBACK(passport_settings_notify), NULL);
 	}
 }
 */
@@ -75,7 +75,7 @@ var watchingGtkSettings bool
 // readSystemTheme must run on the GTK main thread.
 func readSystemTheme() SystemTheme {
 	if !watchingGtkSettings {
-		C.passage_watch_settings()
+		C.passport_watch_settings()
 		watchingGtkSettings = true
 	}
 	theme := SystemTheme{Colors: map[string]string{}}
@@ -84,7 +84,7 @@ func readSystemTheme() SystemTheme {
 		for _, name := range names {
 			var color C.GdkRGBA
 			cname := C.CString(name)
-			found := C.passage_lookup_color(cname, &color) != 0
+			found := C.passport_lookup_color(cname, &color) != 0
 			C.free(unsafe.Pointer(cname))
 			if found {
 				theme.Colors[role] = cssColor(color)
@@ -100,7 +100,7 @@ func readSystemTheme() SystemTheme {
 	} else if app := application.Get(); app != nil {
 		theme.Dark = app.Env.IsDarkMode()
 	}
-	if font := C.passage_font_name(); font != nil {
+	if font := C.passport_font_name(); font != nil {
 		theme.Font = C.GoString(font)
 		C.g_free(C.gpointer(font))
 	}

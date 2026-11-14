@@ -80,29 +80,29 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm check
-          pnpm --filter @passage/desktop build
+          pnpm --filter @passport/desktop build
           pnpm build:extension
           go test ./internal/... ./native-host/... ./desktop/...
-          go build -o desktop/build/passage ./desktop
-          go build -o native-host/build/passage-native-host ./native-host
-          python3 native-host/tests/integration.py native-host/build/passage-native-host
+          go build -o desktop/build/passport ./desktop
+          go build -o native-host/build/passport-native-host ./native-host
+          python3 native-host/tests/integration.py native-host/build/passport-native-host
 
       - name: Package
         run: |
           ./scripts/package-linux.sh
           cd dist/release
-          sha256sum -c passage-linux-x86_64.tar.gz.sha256
-          sha256sum -c passage-extension-chromium.tar.gz.sha256
+          sha256sum -c passport-linux-x86_64.tar.gz.sha256
+          sha256sum -c passport-extension-chromium.tar.gz.sha256
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$RELEASE_TAG" \
-            dist/release/passage-linux-x86_64.tar.gz \
-            dist/release/passage-linux-x86_64.tar.gz.sha256 \
-            dist/release/passage-extension-chromium.tar.gz \
-            dist/release/passage-extension-chromium.tar.gz.sha256 \
+            dist/release/passport-linux-x86_64.tar.gz \
+            dist/release/passport-linux-x86_64.tar.gz.sha256 \
+            dist/release/passport-extension-chromium.tar.gz \
+            dist/release/passport-extension-chromium.tar.gz.sha256 \
             --target "$GITHUB_SHA" \
             --title "$RELEASE_TAG" \
             --generate-notes \
