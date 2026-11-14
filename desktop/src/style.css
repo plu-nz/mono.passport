@@ -224,3 +224,21 @@ code, pre { font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", mon
 .advanced { margin-bottom: 16px; }
 .advanced > summary { padding: 12px 0; color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
 .notice .plz-button { margin-left: 12px; }
+
+/* Emergency kit: readable on screen, and the only thing printed. */
+.kit-modal { width: min(640px, calc(100vw - 32px)); }
+.kit h1 { margin: 0 0 4px; font-size: 20px; }
+.kit h2 { margin: 18px 0 6px; font-size: 15px; }
+.kit-date { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+.kit dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 0; }
+.kit dt { color: var(--muted); }
+.kit dd { margin: 0; font-weight: 700; }
+.kit-blank { min-height: 28px; border-bottom: 1px solid var(--control-line); }
+.kit ol { padding-left: 20px; line-height: 1.7; }
+.kit code { word-break: break-all; }
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; color: #000 !important; background: #fff !important; }
+  .print-area { position: fixed; inset: 0; padding: 32px; }
+  .kit-blank { border-color: #000; }
+}

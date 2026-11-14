@@ -4,6 +4,7 @@
 import { createEffect, createSignal, onCleanup, onMount, type JSX } from 'solid-js';
 import { Clipboard, Events } from '@wailsio/runtime';
 import { Button, Card, TextField } from '@plunz/storybook';
+import { EmergencyKit } from './account';
 import { invoke } from './service';
 import { checkStrength, minScore, strengthLabels, suggestPassphrase, type Strength } from './strength';
 
@@ -92,6 +93,7 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
   const [strength, setStrength] = createSignal<Strength | null>(null);
   const [step, setStep] = createSignal('');
   const [doneRepo, setDoneRepo] = createSignal('');
+  const [kit, setKit] = createSignal(false);
 
   const loadAccount = async () => {
     try { setAccount(await invoke<GitHubAccount>('github_account')); }
@@ -251,7 +253,9 @@ export function Onboarding(props: { status: OnboardingStatus; onDone: () => void
       {mode() === 'create'
         ? <p>Your passwords sync to the private repository <strong>{doneRepo()}</strong>. To use them on another computer, install Passage, choose “I already have a vault”, sign in with GitHub and enter your master password.</p>
         : <p>Your passwords from <strong>{doneRepo()}</strong> are on this computer and stay in sync.</p>}
-      <div class="onboarding-actions"><Button onClick={props.onDone}>Open my vault</Button></div>
+      {mode() === 'create' && <p>Print an emergency kit and keep it with your written-down password, away from this computer.</p>}
+      <div class="onboarding-actions"><Button onClick={props.onDone}>Open my vault</Button>{mode() === 'create' && <Button variant="outline" onClick={() => setKit(true)}>Print emergency kit</Button>}</div>
+      {kit() && <EmergencyKit login={account()?.login || ''} repo={doneRepo()} onClose={() => setKit(false)} />}
     </Shell>}
   </>;
 }

@@ -171,6 +171,51 @@ func TestCreateOnOneComputerRestoreOnAnother(t *testing.T) {
 	if _, err := CreateWithGitHub(context.Background(), client, account, password, "/opt/passage", progress); err == nil {
 		t.Fatal("create overwrote an existing vault")
 	}
+
+	// The password changes on the first computer.
+	computer(t, root, "first")
+	newPassword := []byte("a different master password")
+	if err := ChangeMasterPassword([]byte("not the password"), newPassword); !errors.Is(err, gpgkey.ErrBadPassphrase) {
+		t.Fatalf("change with a wrong current password = %v", err)
+	}
+	if err := ChangeMasterPassword(password, newPassword); err != nil {
+		t.Fatal(err)
+	}
+	if err := UnlockVault(password); !errors.Is(err, gpgkey.ErrBadPassphrase) {
+		t.Fatalf("old password after change = %v", err)
+	}
+	// Offline, a change is undone so the key and the recovery copy agree.
+	os.Rename(remote, remote+".away")
+	if err := ChangeMasterPassword(newPassword, []byte("yet another master password")); err == nil {
+		t.Fatal("password changed although the recovery copy could not be uploaded")
+	}
+	os.Rename(remote+".away", remote)
+	if err := UnlockVault(newPassword); err != nil {
+		t.Fatalf("password after an undone change: %v", err)
+	}
+
+	// The second computer picks the new password up from the recovery copy.
+	computer(t, root, "second")
+	secondFP, _ := VaultFingerprint()
+	gpgkey.Lock(secondFP)
+	if err := UnlockVault(newPassword); err != nil {
+		t.Fatalf("new password on the second computer: %v", err)
+	}
+	gpgkey.Lock(secondFP)
+	if err := UnlockVault(password); !errors.Is(err, gpgkey.ErrBadPassphrase) {
+		t.Fatalf("old password on the second computer after the update = %v", err)
+	}
+
+	exported := filepath.Join(root, "exported.asc")
+	if err := ExportKey(newPassword, exported); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(exported); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("exported key file: %v, %v", info, err)
+	}
+	if err := ExportKey([]byte("wrong password!"), exported); !errors.Is(err, gpgkey.ErrBadPassphrase) {
+		t.Fatalf("export with a wrong password = %v", err)
+	}
 }
 
 func run(t *testing.T, dir, name string, args ...string) string {

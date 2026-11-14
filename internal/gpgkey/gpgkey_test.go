@@ -187,3 +187,60 @@ func TestParseEncryptionKeygrips(t *testing.T) {
 		t.Fatalf("parseEncryptionKeygrips() = %v; want only the valid encryption subkey", got)
 	}
 }
+
+func TestChangePassphraseAndReplace(t *testing.T) {
+	first := gnupgHome(t)
+	fp, err := Generate("Passage Test <passage@example.invalid>", password)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := encrypt(t, fp)
+	before, err := ExportSecret(fp, password)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newPassword := []byte("a brand new master password")
+	if err := ChangePassphrase(fp, []byte("wrong"), newPassword); !errors.Is(err, ErrBadPassphrase) {
+		t.Fatalf("ChangePassphrase(wrong old) = %v; want ErrBadPassphrase", err)
+	}
+	if err := ChangePassphrase(fp, password, newPassword); err != nil {
+		t.Fatal(err)
+	}
+	if err := Unlock(fp, password); !errors.Is(err, ErrBadPassphrase) {
+		t.Fatalf("old password still unlocks: %v", err)
+	}
+	if err := Unlock(fp, newPassword); err != nil {
+		t.Fatal(err)
+	}
+	after, err := ExportSecret(fp, newPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Another computer still holds the key under the old password.
+	killAgent(first)
+	gnupgHome(t)
+	if err := Import(before, fp); err != nil {
+		t.Fatal(err)
+	}
+	if err := Import(after, fp); err != nil {
+		t.Fatal(err)
+	}
+	if err := Unlock(fp, newPassword); !errors.Is(err, ErrBadPassphrase) {
+		t.Fatalf("a plain re-import changed the protection: %v", err)
+	}
+	if err := Replace(after, fp); err != nil {
+		t.Fatal(err)
+	}
+	if err := Unlock(fp, newPassword); err != nil {
+		t.Fatalf("Unlock after Replace: %v", err)
+	}
+	if !decryptsWithoutPrompt(t, entry) {
+		t.Fatal("entry did not decrypt after Replace")
+	}
+	cmd := exec.Command("gpg", "--batch", "--encrypt", "--recipient", fp)
+	cmd.Stdin = strings.NewReader("new entry")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("trust lost after Replace: %v %s", err, out)
+	}
+}

@@ -335,3 +335,47 @@ func agent(command string) (string, error) {
 	}
 	return string(out), nil
 }
+
+// ChangePassphrase re-protects the key (primary and subkeys) with a new
+// password. gpg asks for the old and then the new passphrase over
+// --command-fd, which here is stdin, so neither reaches argv.
+func ChangePassphrase(fingerprint string, old, new []byte) error {
+	if !ValidFingerprint(fingerprint) {
+		return errors.New("Invalid key fingerprint")
+	}
+	if err := CheckPassword(old); err != nil {
+		return err
+	}
+	if err := CheckPassword(new); err != nil {
+		return err
+	}
+	answers := make([]byte, 0, len(old)+len(new)+2)
+	answers = append(append(append(append(answers, old...), '\n'), new...), '\n')
+	defer clear(answers)
+	r := gpg(nil, answers, "--pinentry-mode", "loopback", "--command-fd", "0", "--passwd", fingerprint)
+	if r.err != nil {
+		return fail("change the master password", r)
+	}
+	return nil
+}
+
+// Replace swaps the local private key for the armored one with the same
+// fingerprint. gpg keeps an existing key's protection on import, so after a
+// password change on another computer the old local copy must go first.
+func Replace(armored []byte, fingerprint string) error {
+	if !ValidFingerprint(fingerprint) {
+		return errors.New("Invalid key fingerprint")
+	}
+	fingerprint = strings.ToUpper(fingerprint)
+	r := gpg(nil, armored, "--with-colons", "--import-options", "show-only", "--import")
+	if r.err != nil {
+		return errors.New("Recovery copy does not contain a readable key")
+	}
+	if got := secretPrimaries(r.stdout); len(got) != 1 || got[0] != fingerprint {
+		return errors.New("Recovery copy holds a different key than expected")
+	}
+	if r = gpg(nil, nil, "--yes", "--delete-secret-keys", fingerprint); r.err != nil {
+		return errors.New("GPG could not replace the local key")
+	}
+	return Import(armored, fingerprint)
+}

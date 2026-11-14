@@ -164,7 +164,7 @@ Each phase is one or more commits on `main`, following the repository's usual fl
 | S4 | Real OAuth App: device flow, `POST /user/repos`, then clone and push through the `passage git-credential` helper. | **Confirmed** with the `plu-nz` OAuth App:<br>• device code → approval in the browser → token with `scope=repo`;<br>• token stored in Secret Service (`go-keyring`);<br>• `GET /user`;<br>• `POST /user/repos` created a private repository;<br>• commit with the noreply identity, then push and clone, all authenticated only by a `!<exe> git-credential` helper in the local config. |
 | S5 | Argon2id timing and memory at 256 MiB / t=3 / p=4 on a modest laptop. Target about 1 s. | **Confirmed**: 0.48 s on a Ryzen 5 PRO 3500U (64 MiB: 0.10 s; 128 MiB: 0.27 s). Keep 256 MiB / t=3 / p=4. |
 | S6 | Secret Service availability (Omarchy, GNOME, KDE, a bare window manager) and the fallback path. | **Omarchy**: `org.freedesktop.secrets` is provided by `gnome-keyring-daemon`. Other desktops are still to check; the fallback remains necessary. |
-| S7 | Changing the passphrase non-interactively (`--passwd` with loopback), or a fallback via pinentry. | To do; needed for phase 6 only |
+| S7 | Changing the passphrase non-interactively (`--passwd` with loopback), or a fallback via pinentry. | **Confirmed**: `--pinentry-mode loopback --command-fd 0 --passwd` reads the old and then the new passphrase from stdin and re-protects the primary key and the subkeys; a wrong old passphrase reports `GPG_ERR_BAD_PASSPHRASE`. Re-importing a key whose passphrase changed elsewhere keeps the old protection, so the local secret key must be deleted before the import (ownertrust survives). |
 
 ## 7. Acceptance
 

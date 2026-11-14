@@ -253,14 +253,41 @@ func (*DesktopService) RestoreVaultFromGitHub(fullName, password string) (setup.
 }
 
 // Unlock checks the master password and keeps the key unlocked in gpg-agent.
+// A password changed on another computer is picked up from the recovery copy.
 func (*DesktopService) Unlock(password string) error {
-	fp, err := setup.VaultFingerprint()
-	if err != nil {
-		return err
-	}
 	secret := []byte(password)
 	defer clear(secret)
-	return gpgkey.Unlock(fp, secret)
+	return setup.UnlockVault(secret)
+}
+
+// ChangeMasterPassword re-protects the key and updates the recovery copy.
+func (*DesktopService) ChangeMasterPassword(current, next string) error {
+	old, new := []byte(current), []byte(next)
+	defer clear(old)
+	defer clear(new)
+	return setup.ChangeMasterPassword(old, new)
+}
+
+// ExportKey asks where to save the private key, still protected by the
+// master password, for other pass apps. It returns the chosen path, or ""
+// when the dialog was cancelled.
+func (*DesktopService) ExportKey(password string) (string, error) {
+	secret := []byte(password)
+	defer clear(secret)
+	fp, err := setup.VaultFingerprint()
+	if err != nil {
+		return "", err
+	}
+	// Check the password before asking for a file.
+	if err := gpgkey.Unlock(fp, secret); err != nil {
+		return "", err
+	}
+	home, _ := os.UserHomeDir()
+	path, err := application.Get().Dialog.SaveFile().SetMessage("Save your Passage key").SetFilename("passage-key.asc").SetDirectory(home).AddFilter("Armored GPG key", "*.asc").PromptForSingleSelection()
+	if err != nil || path == "" {
+		return "", err
+	}
+	return path, setup.ExportKey(secret, path)
 }
 
 // Lock forgets the master password in gpg-agent for the vault key only.

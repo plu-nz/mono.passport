@@ -4,6 +4,7 @@ import { Clipboard, Events } from '@wailsio/runtime';
 import { Button, Card, TextField, Theme } from '@plunz/storybook';
 import '@plunz/storybook/styles.css';
 import { invoke } from './service';
+import { ChangePasswordDialog, EmergencyKit, ExportKeyDialog } from './account';
 import { GitHubSignIn, Onboarding, UnlockScreen, type GitHubAccount, type OnboardingStatus } from './onboarding';
 import { generatePassword, loadOptions, maxLength, maxMinimum, minLength, normalize, saveOptions, specialChars, type GeneratorOptions } from './generator';
 import { version as appVersion } from '../package.json';
@@ -87,6 +88,7 @@ function App() {
   const [accountError, setAccountError] = createSignal('');
   const [syncState, setSyncState] = createSignal<SyncState>({ state: 'off' });
   const [autoSync, setAutoSync] = createSignal(false);
+  const [accountDialog, setAccountDialog] = createSignal<'' | 'password' | 'export' | 'kit'>('');
   const requestNumber = { current: 0 };
 
   const refresh = async () => {
@@ -579,7 +581,7 @@ function App() {
     </Card>}
     {activeTab() === 'settings' && state().kind === 'available' && <Card class="panel vault-panel" aria-label="Security and sync">
       <h2>Security and sync</h2>
-      {managedRepo() && <><div class="panel-actions"><Button variant="outline" size="sm" onClick={() => void lockNow()}>Lock now</Button></div><p class="hint">Locking forgets the master password for Passage, the browser extension and <code>pass</code> in the terminal.</p></>}
+      {managedRepo() && <><div class="panel-actions"><Button variant="outline" size="sm" onClick={() => void lockNow()}>Lock now</Button><Button variant="outline" size="sm" onClick={() => setAccountDialog('password')}>Change master password</Button><Button variant="outline" size="sm" onClick={() => setAccountDialog('kit')}>Emergency kit</Button><Button variant="ghost" size="sm" onClick={() => setAccountDialog('export')}>Use in other apps</Button></div><p class="hint">Locking forgets the master password for Passage, the browser extension and <code>pass</code> in the terminal.</p></>}
       <label class="check"><input type="checkbox" checked={autoSync()} disabled={!git()?.upstream} onChange={event => void changeAutoSync(event.currentTarget.checked)} />Sync automatically</label>
       <p class="hint">{git()?.upstream ? syncDescription() : 'Connect the vault to a remote in Advanced to sync it.'}</p>
       {autoSync() && git()?.upstream && <Button variant="outline" size="sm" disabled={syncState().state === 'syncing'} onClick={() => void runSync()}>Sync now</Button>}
@@ -664,6 +666,9 @@ function App() {
       {entryForm()}
       {error() && <p class="panel-error" role="alert">{error()}</p>}
     </dialog>}
+    {accountDialog() === 'password' && <ChangePasswordDialog login={account()?.login || ''} minPassword={onboardingStatus()?.minPassword || 12} onClose={() => setAccountDialog('')} />}
+    {accountDialog() === 'export' && <ExportKeyDialog onClose={() => setAccountDialog('')} />}
+    {accountDialog() === 'kit' && <EmergencyKit login={account()?.login || managedRepo().split('/')[0]} repo={managedRepo()} onClose={() => setAccountDialog('')} />}
     {navPosition() === 'bottom' && appBar()}
   </main>}</Theme>;
 }
