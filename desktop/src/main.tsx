@@ -38,6 +38,9 @@ type VaultInfo = { path: string; source: string; initialized: boolean; gpgKeys: 
 type CreatedVault = { info: VaultInfo; fingerprint: string };
 type TotpCode = { code: string; period: number; remaining: number; validUntil: number };
 
+// Wails reports Go errors as "RuntimeError: <message>"; show the message only.
+const errorText = (cause: unknown) => String(cause).replace(/^(Runtime)?Error:\s*/, '');
+
 function displayDetails(details: string): string {
   return details.split('\n').map(line => /^\s*(?:otpauth\s*:\s*)?otpauth:\/\//i.test(line) ? 'TOTP: configured' : line).join('\n');
 }
@@ -105,7 +108,7 @@ function App() {
       setEntries(next.kind === 'available' ? await invoke<Entry[]>('list_entries') : []);
       setError('');
     } catch (cause) {
-      setError(String(cause));
+      setError(errorText(cause));
     }
   };
 
@@ -133,7 +136,7 @@ function App() {
     }
   };
   onMount(async () => {
-    try { setRefreshSeconds(await invoke<number>('refresh_seconds')); } catch (cause) { setRefreshError(String(cause)); }
+    try { setRefreshSeconds(await invoke<number>('refresh_seconds')); } catch (cause) { setRefreshError(errorText(cause)); }
   });
   createEffect(() => {
     const seconds = refreshSeconds();
@@ -147,7 +150,7 @@ function App() {
       await invoke('set_refresh_seconds', { seconds });
       setRefreshSeconds(seconds);
     } catch (cause) {
-      setRefreshError(String(cause));
+      setRefreshError(errorText(cause));
     }
   };
   const refreshVaultInfo = async () => {
@@ -157,25 +160,25 @@ function App() {
       setVaultPath(info.path);
       setKeyId(current => current || info.gpgKeys[0]?.id || '');
       setVaultError('');
-    } catch (cause) { setVaultError(String(cause)); }
+    } catch (cause) { setVaultError(errorText(cause)); }
   };
   onMount(() => { void refreshVaultInfo(); });
   const refreshGit = async () => {
     try { setGit(await invoke<GitStatus>('git_status')); setGitError(''); }
-    catch (cause) { setGit(null); setGitError(String(cause)); }
+    catch (cause) { setGit(null); setGitError(errorText(cause)); }
   };
   const refreshGithub = async () => {
     try { setGithub(await invoke<GithubStatus>('github_status')); setGithubError(''); }
-    catch (cause) { setGithubError(String(cause)); }
+    catch (cause) { setGithubError(errorText(cause)); }
   };
   const refreshPairings = async () => {
     try { setPairings(await invoke<Pairing[]>('list_pairings')); setPairingError(''); }
-    catch (cause) { setPairingError(String(cause)); }
+    catch (cause) { setPairingError(errorText(cause)); }
   };
   onMount(() => { void refreshGit(); void refreshGithub(); void refreshPairings(); });
   const refreshBrowserLock = async () => {
     try { setBrowserLocked(await invoke<boolean>('browser_access_state')); setBrowserLockError(''); }
-    catch (cause) { setBrowserLocked(null); setBrowserLockError(String(cause)); }
+    catch (cause) { setBrowserLocked(null); setBrowserLockError(errorText(cause)); }
   };
   onMount(() => { void refreshBrowserLock(); });
 
@@ -183,10 +186,10 @@ function App() {
   // the app; other vaults keep using pinentry.
   const managedRepo = () => onboardingStatus()?.managedRepo || '';
   const refreshOnboarding = async () => {
-    try { setOnboardingStatus(await invoke<OnboardingStatus>('onboarding_status')); } catch (cause) { setVaultError(String(cause)); }
+    try { setOnboardingStatus(await invoke<OnboardingStatus>('onboarding_status')); } catch (cause) { setVaultError(errorText(cause)); }
   };
   const refreshAccount = async () => {
-    try { setAccount(await invoke<GitHubAccount>('github_account')); setAccountError(''); } catch (cause) { setAccountError(String(cause)); }
+    try { setAccount(await invoke<GitHubAccount>('github_account')); setAccountError(''); } catch (cause) { setAccountError(errorText(cause)); }
   };
   const clearSecrets = () => {
     requestNumber.current += 1;
@@ -204,15 +207,15 @@ function App() {
   };
   async function lockNow() {
     if (!await confirmAction({ title: 'Lock Passport?', message: 'You will need your master password to open entries again. The browser extension and pass in the terminal lock too.', confirm: 'Lock' })) return;
-    try { await invoke('lock'); clearSecrets(); setKeyLocked(true); } catch (cause) { setError(String(cause)); }
+    try { await invoke('lock'); clearSecrets(); setKeyLocked(true); } catch (cause) { setError(errorText(cause)); }
   }
   async function signOut() {
     if (!await confirmAction({ title: 'Sign out of GitHub?', message: 'Sync stops on this computer until you sign in again. Your vault and its repository stay as they are.', confirm: 'Sign out' })) return;
-    try { await invoke('github_sign_out'); await refreshAccount(); } catch (cause) { setAccountError(String(cause)); }
+    try { await invoke('github_sign_out'); await refreshAccount(); } catch (cause) { setAccountError(errorText(cause)); }
   }
   const runSync = async () => {
     if (!autoSync() || state().kind !== 'available') return;
-    try { setSyncState(await invoke<SyncState>('sync_now')); } catch (cause) { setSyncState({ state: 'attention', message: String(cause) }); }
+    try { setSyncState(await invoke<SyncState>('sync_now')); } catch (cause) { setSyncState({ state: 'attention', message: errorText(cause) }); }
     await reloadEntries();
     await refreshGit();
   };
@@ -222,7 +225,7 @@ function App() {
       setAutoSync(on);
       setSyncState(await invoke<SyncState>('sync_state'));
       if (on) await runSync();
-    } catch (cause) { setGitError(String(cause)); }
+    } catch (cause) { setGitError(errorText(cause)); }
   };
   // Ctrl+F (Cmd+F on macOS) jumps to the vault search from any tab.
   let searchInput: HTMLInputElement | undefined;
@@ -283,7 +286,7 @@ function App() {
       const result = await invoke<Secret>('read_entry', { id });
       if (request === requestNumber.current) setSecret(result);
     } catch (cause) {
-      if (request === requestNumber.current) setError(String(cause));
+      if (request === requestNumber.current) setError(errorText(cause));
     }
   }
 
@@ -329,7 +332,7 @@ function App() {
       await refresh();
       await openEntry(id);
       await refreshGit();
-    } catch (cause) { setError(String(cause)); }
+    } catch (cause) { setError(errorText(cause)); }
     finally { setEntryBusy(false); }
   }
 
@@ -342,7 +345,7 @@ function App() {
       await invoke('remove_entry', { id: selected(), expectedHash: secret().ciphertext_hash });
       await refresh();
       await refreshGit();
-    } catch (cause) { setError(String(cause)); }
+    } catch (cause) { setError(errorText(cause)); }
     finally { setEntryBusy(false); }
   }
 
@@ -368,6 +371,11 @@ function App() {
     check: () => <path d="M5 12.5l4.5 4.5L19 7.5" />,
     eye: () => <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
     eyeOff: () => <><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.6 3.5M6.6 6.6C3.6 8.5 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="M3 3l18 18" /></>,
+    user: () => <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" /></>,
+    key: () => <><circle cx="8" cy="15" r="4" /><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2" /></>,
+    otp: () => <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2M9 2h6" /></>,
+    down: () => <path d="M6 9l6 6 6-6" />,
+    up: () => <path d="M6 15l6-6 6 6" />,
     external: () => <><path d="M14 4h6v6" /><path d="M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></>,
   };
   const fieldAction = (label: string, onClick: () => void, paths: () => JSX.Element) => <button class="icon-button field-action" aria-label={label} title={label} onClick={onClick}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths()}</svg></button>;
@@ -389,7 +397,7 @@ function App() {
     } catch (cause) { setError(`Copy failed: ${cause}`); }
   }
   async function openUrl(url: string) {
-    try { await invoke('open_url', { url }); } catch (cause) { setError(String(cause)); }
+    try { await invoke('open_url', { url }); } catch (cause) { setError(errorText(cause)); }
   }
   let clipboardTimer: number | undefined;
   async function copyGenerated() {
@@ -452,7 +460,7 @@ function App() {
   async function sync(operation: 'git_pull' | 'git_push') {
     setGitError('');
     try { setGit(await invoke<GitStatus>(operation)); await refresh(); }
-    catch (cause) { setGitError(String(cause)); await refreshGit(); }
+    catch (cause) { setGitError(errorText(cause)); await refreshGit(); }
   }
 
   async function setupGit(operation: 'git_initialize' | 'git_set_remote' | 'git_publish_new_vault' | 'git_commit_changes' | 'git_merge_preserving_both') {
@@ -461,19 +469,19 @@ function App() {
       setGit(await invoke<GitStatus>(operation, operation === 'git_set_remote' ? { url: gitRemote().trim() } : {}));
       if (operation === 'git_set_remote') setGitRemote('');
       await refreshGithub();
-    } catch (cause) { setGitError(String(cause)); await refreshGit(); }
+    } catch (cause) { setGitError(errorText(cause)); await refreshGit(); }
   }
 
   async function connectGithub() {
     setGithubError('');
     try { await invoke('github_login'); }
-    catch (cause) { setGithubError(String(cause)); }
+    catch (cause) { setGithubError(errorText(cause)); }
   }
 
   async function configureGithubVault() {
     setGithubError('');
     try { setGithub(await invoke<GithubStatus>('github_configure_vault')); }
-    catch (cause) { setGithubError(String(cause)); }
+    catch (cause) { setGithubError(errorText(cause)); }
   }
 
   async function changeBrowserLock(lock: boolean) {
@@ -483,7 +491,7 @@ function App() {
       await invoke(lock ? 'lock_browser_access' : 'unlock_browser_access');
       setBrowserLocked(lock);
       if (lock) { requestNumber.current += 1; setSecret(null); setTotp(null); setVisible(false); setEditing(false); setEntryPassword(''); setEntryDetails(''); }
-    } catch (cause) { setBrowserLockError(String(cause)); await refreshBrowserLock(); }
+    } catch (cause) { setBrowserLockError(errorText(cause)); await refreshBrowserLock(); }
   }
 
   async function showTotp() {
@@ -493,21 +501,21 @@ function App() {
       const code = await invoke<TotpCode>('generate_totp', { id: selected() });
       if (request === requestNumber.current) { setTotp(code); setError(''); }
     } catch (cause) {
-      if (request === requestNumber.current) { setTotp(null); setError(String(cause)); }
+      if (request === requestNumber.current) { setTotp(null); setError(errorText(cause)); }
     }
   }
 
   async function approvePairing() {
     setPairingError('');
     try { await invoke('approve_pairing', { code: pairingCode().trim() }); setPairingCode(''); await refreshPairings(); }
-    catch (cause) { setPairingError(String(cause)); }
+    catch (cause) { setPairingError(errorText(cause)); }
   }
 
   async function revokePairing(pairing: Pairing) {
     if (!await confirmAction({ title: 'Revoke this extension?', message: `${pairing.origin} stops filling passwords. Pair it again with a new code to use it.`, confirm: 'Revoke' })) return;
     setPairingError('');
     try { await invoke('revoke_pairing', { origin: pairing.origin, installationId: pairing.installationId }); await refreshPairings(); }
-    catch (cause) { setPairingError(String(cause)); }
+    catch (cause) { setPairingError(errorText(cause)); }
   }
 
   async function configureVault(operation: 'select_vault' | 'create_vault') {
@@ -522,7 +530,7 @@ function App() {
       await refreshGit();
       await refreshGithub();
       await refreshPairings();
-    } catch (cause) { setVaultError(String(cause)); }
+    } catch (cause) { setVaultError(errorText(cause)); }
     finally { setVaultBusy(false); }
   }
 
@@ -540,7 +548,7 @@ function App() {
       await refreshGit();
       await refreshGithub();
       await refreshPairings();
-    } catch (cause) { setVaultError(String(cause)); }
+    } catch (cause) { setVaultError(errorText(cause)); }
     finally { setVaultBusy(false); }
   }
 
@@ -556,7 +564,7 @@ function App() {
       await refreshGit();
       await refreshGithub();
       await refreshPairings();
-    } catch (cause) { setVaultError(String(cause)); }
+    } catch (cause) { setVaultError(errorText(cause)); }
     finally { setVaultBusy(false); }
   }
 
@@ -564,6 +572,49 @@ function App() {
   // the top the order is mirrored so the navigation sits at the window edge.
   // The memo keeps vault refreshes from rebuilding the bar (and dropping focus)
   // while someone is typing.
+  // The open entry: beside the list in wide windows, under its row (as an
+  // accordion) up to 900px, matching the stacked layout in style.css.
+  const detailContent = () => <>{editing() && !creating() ? <>
+        <h2>Edit {selected()}</h2>
+        {entryForm()}
+      </> : selected() ? <><div class="detail-heading"><div><small>VAULT ENTRY</small><h2>{selected()}</h2></div><Button variant="outline" size="sm" onClick={startEdit} disabled={!secret()}>Edit</Button></div>{secret() ? <>{secret().username && <Card padding="sm" class="field-card"><label>Username</label><div class="field-row"><div class="field-value">{secret().username}</div><div class="field-actions">{fieldAction(copiedField() === 'username' ? 'Copied' : 'Copy username', () => void copyField('username', secret().username!), copiedField() === 'username' ? icons.check : icons.copy)}</div></div></Card>}{secret().urls.length > 0 && <Card padding="sm" class="field-card"><label>URL</label><div class="field-row"><div class="field-value">{secret().urls[0]}</div><div class="field-actions">{/^https?:\/\//i.test(secret().urls[0]) && fieldAction('Open in browser', () => void openUrl(secret().urls[0]), icons.external)}{fieldAction(copiedField() === 'url' ? 'Copied' : 'Copy URL', () => void copyField('url', secret().urls[0]), copiedField() === 'url' ? icons.check : icons.copy)}</div></div></Card>}<Card padding="sm" class="field-card"><label>Password</label><div class="field-row"><code class="field-value">{visible() ? secret().password : '••••••••••••'}</code><div class="field-actions">{fieldAction(visible() ? 'Hide password' : 'Show password', () => setVisible(!visible()), visible() ? icons.eyeOff : icons.eye)}{fieldAction(copiedField() === 'password' ? 'Copied' : 'Copy password', () => void copyField('password', secret().password, true), copiedField() === 'password' ? icons.check : icons.copy)}</div></div></Card>{secret().details && <Card padding="sm" class="field-card"><label>Other fields</label><pre>{displayDetails(secret().details)}</pre></Card>}<Button variant="outline" size="sm" disabled={entryBusy()} onClick={() => void deleteEntry()}>Delete</Button><Button variant="outline" size="sm" onClick={() => void showTotp()}>Generate TOTP code</Button>{totp() && <p role="status">TOTP code: <code>{totp().code}</code> · valid for up to {Math.max(0, Math.ceil(totp().validUntil - Date.now() / 1000))} s</p>}<p class="hint">The secret disappears from the screen after 30 seconds. gpg-agent may keep the key cached.</p></> : <p>Open the entry to view its contents.</p>}</> : <p>Select an entry.</p>}</>;
+  const narrowQuery = window.matchMedia('(max-width: 900px)');
+  const [narrow, setNarrow] = createSignal(narrowQuery.matches);
+  const onNarrow = (event: MediaQueryListEvent) => setNarrow(event.matches);
+  narrowQuery.addEventListener('change', onNarrow);
+  onCleanup(() => narrowQuery.removeEventListener('change', onNarrow));
+  function toggleEntry(id: string) {
+    if (selected() === id && !editing()) {
+      requestNumber.current += 1;
+      setSelected(null); setSecret(null); setTotp(null); setVisible(false);
+      return;
+    }
+    void openEntry(id);
+  }
+  // Row shortcuts decrypt the entry on demand: the list only knows names.
+  async function quickAction(id: string, kind: 'open' | 'username' | 'password' | 'otp') {
+    setError('');
+    if (await checkLock()) return;
+    try {
+      if (kind === 'otp') {
+        const code = await invoke<TotpCode>('generate_totp', { id }).catch(cause => {
+          throw /TOTP/.test(String(cause)) ? new Error(`${id} has no verification code.`) : cause;
+        });
+        await copyField(`${id}:otp`, code.code, true);
+        return;
+      }
+      const entry = await invoke<Secret>('read_entry', { id });
+      if (kind === 'open') {
+        if (!entry.urls[0]) setError(`${id} has no URL.`);
+        else await openUrl(entry.urls[0]);
+      } else if (kind === 'username') {
+        if (!entry.username) setError(`${id} has no username.`);
+        else await copyField(`${id}:username`, entry.username);
+      } else {
+        await copyField(`${id}:password`, entry.password, true);
+      }
+    } catch (cause) { setError(errorText(cause)); }
+  }
   const unavailable = createMemo(() => state().kind !== 'available');
   const tabButton = (tab: (typeof tabs)[number]) => <button class={activeTab() === tab.id ? 'active' : ''} aria-current={activeTab() === tab.id ? 'page' : undefined} onClick={() => setActiveTab(tab.id)}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{tab.icon()}</svg><span>{tab.label}</span></button>;
   const appBar = () => {
@@ -690,11 +741,20 @@ function App() {
     </Card>}
     </details>}
     {activeTab() === 'vault' && (state().kind !== 'available' ? <section class="notice">{state().kind === 'onboarding' ? 'Setting up the vault was interrupted.' : (state() as { reason: string }).reason}{(state().kind === 'onboarding' || (vaultInfo() && !vaultInfo().initialized && vaultInfo().source !== 'environment')) && <Button size="sm" onClick={() => setSkipWizard(false)}>{state().kind === 'onboarding' ? 'Continue setup' : 'Set up with GitHub'}</Button>}</section> : <>
-      <div class="workspace"><nav aria-label="Vault entries">{filtered().length ? filtered().map(entry => <button class={selected() === entry.id ? 'entry selected' : 'entry'} onClick={() => void openEntry(entry.id)}><span class="entry-icon" aria-hidden="true">{entry.title.slice(0, 2).toUpperCase()}</span><span class="entry-text"><strong>{entry.title}</strong><small>{entry.id}</small></span><span class="entry-chevron" aria-hidden="true">›</span></button>) : <p>No entries found.</p>}</nav>
-      <section class="detail" aria-label="Entry details">{editing() && !creating() ? <>
-        <h2>Edit {selected()}</h2>
-        {entryForm()}
-      </> : selected() ? <><div class="detail-heading"><div><small>VAULT ENTRY</small><h2>{selected()}</h2></div><Button variant="outline" size="sm" onClick={startEdit} disabled={!secret()}>Edit</Button></div>{secret() ? <>{secret().username && <Card padding="sm" class="field-card"><label>Username</label><div class="field-row"><div class="field-value">{secret().username}</div><div class="field-actions">{fieldAction(copiedField() === 'username' ? 'Copied' : 'Copy username', () => void copyField('username', secret().username!), copiedField() === 'username' ? icons.check : icons.copy)}</div></div></Card>}{secret().urls.length > 0 && <Card padding="sm" class="field-card"><label>URL</label><div class="field-row"><div class="field-value">{secret().urls[0]}</div><div class="field-actions">{/^https?:\/\//i.test(secret().urls[0]) && fieldAction('Open in browser', () => void openUrl(secret().urls[0]), icons.external)}{fieldAction(copiedField() === 'url' ? 'Copied' : 'Copy URL', () => void copyField('url', secret().urls[0]), copiedField() === 'url' ? icons.check : icons.copy)}</div></div></Card>}<Card padding="sm" class="field-card"><label>Password</label><div class="field-row"><code class="field-value">{visible() ? secret().password : '••••••••••••'}</code><div class="field-actions">{fieldAction(visible() ? 'Hide password' : 'Show password', () => setVisible(!visible()), visible() ? icons.eyeOff : icons.eye)}{fieldAction(copiedField() === 'password' ? 'Copied' : 'Copy password', () => void copyField('password', secret().password, true), copiedField() === 'password' ? icons.check : icons.copy)}</div></div></Card>{secret().details && <Card padding="sm" class="field-card"><label>Other fields</label><pre>{displayDetails(secret().details)}</pre></Card>}<Button variant="outline" size="sm" disabled={entryBusy()} onClick={() => void deleteEntry()}>Delete</Button><Button variant="outline" size="sm" onClick={() => void showTotp()}>Generate TOTP code</Button>{totp() && <p role="status">TOTP code: <code>{totp().code}</code> · valid for up to {Math.max(0, Math.ceil(totp().validUntil - Date.now() / 1000))} s</p>}<p class="hint">The secret disappears from the screen after 30 seconds. gpg-agent may keep the key cached.</p></> : <p>Open the entry to view its contents.</p>}</> : <p>Select an entry.</p>}</section></div>
+      <div class="workspace"><nav aria-label="Vault entries">{filtered().length ? filtered().map(entry => <>
+        <div class={selected() === entry.id ? 'entry selected' : 'entry'}>
+          <button class="entry-main" aria-expanded={selected() === entry.id} onClick={() => void toggleEntry(entry.id)}><span class="entry-icon" aria-hidden="true">{entry.title.slice(0, 2).toUpperCase()}</span><span class="entry-text"><strong>{entry.title}</strong><small>{entry.id}</small></span></button>
+          <div class="entry-actions">
+            {fieldAction('Open in browser', () => void quickAction(entry.id, 'open'), icons.external)}
+            {fieldAction(copiedField() === `${entry.id}:username` ? 'Copied' : 'Copy username', () => void quickAction(entry.id, 'username'), copiedField() === `${entry.id}:username` ? icons.check : icons.user)}
+            {fieldAction(copiedField() === `${entry.id}:password` ? 'Copied' : 'Copy password', () => void quickAction(entry.id, 'password'), copiedField() === `${entry.id}:password` ? icons.check : icons.key)}
+            {fieldAction(copiedField() === `${entry.id}:otp` ? 'Copied' : 'Copy verification code', () => void quickAction(entry.id, 'otp'), copiedField() === `${entry.id}:otp` ? icons.check : icons.otp)}
+            {fieldAction(selected() === entry.id ? 'Collapse details' : 'Expand details', () => void toggleEntry(entry.id), selected() === entry.id ? icons.up : icons.down)}
+          </div>
+        </div>
+        {narrow() && selected() === entry.id && <section class="detail detail-inline" aria-label="Entry details">{detailContent()}</section>}
+      </>) : <p>No entries found.</p>}</nav>
+      {!narrow() && <section class="detail" aria-label="Entry details">{detailContent()}</section>}</div>
     </>)}
     {error() && !creating() && <p class="error" role="alert">{error()}</p>}
     </div>
