@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/plu-nz/mono.passage/internal/ghauth"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -12,6 +13,11 @@ import (
 var assets embed.FS
 
 func main() {
+	// Git runs `passage git-credential get` for the vault's github.com remote.
+	// It must answer before Wails starts: no window, no single-instance hand-off.
+	if len(os.Args) > 1 && os.Args[1] == "git-credential" {
+		os.Exit(ghauth.CredentialHelper(os.Args[2:], os.Stdin, os.Stdout))
+	}
 	var window *application.WebviewWindow
 	title := "Passage"
 	var linux application.LinuxOptions
