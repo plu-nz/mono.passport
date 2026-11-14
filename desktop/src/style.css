@@ -263,3 +263,12 @@ code.field-value { overflow-wrap: anywhere; }
 @media (max-width: 560px) { .app-footer-where { display: none; } }
 .confirm-modal { width: min(440px, calc(100vw - 32px)); }
 .confirm-message { margin: 0 0 20px; color: var(--muted); line-height: 1.5; }
+
+/* The open entry is an editable form; actions sit beside each field. */
+.entry-editor { display: flex; flex-direction: column; gap: 14px; }
+.input-row { display: flex; align-items: center; gap: 6px; }
+.input-row > input { flex: 1; min-width: 0; }
+.input-row .field-actions { margin: 0; }
+.entry-editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.entry-editor-actions .spacer { flex: 1; }
+.entry-editor p { margin: 0; }

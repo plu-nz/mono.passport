@@ -41,10 +41,6 @@ type TotpCode = { code: string; period: number; remaining: number; validUntil: n
 // Wails reports Go errors as "RuntimeError: <message>"; show the message only.
 const errorText = (cause: unknown) => String(cause).replace(/^(Runtime)?Error:\s*/, '');
 
-function displayDetails(details: string): string {
-  return details.split('\n').map(line => /^\s*(?:otpauth\s*:\s*)?otpauth:\/\//i.test(line) ? 'TOTP: configured' : line).join('\n');
-}
-
 function App() {
   const [state, setState] = createSignal<VaultState>({ kind: 'unavailable', reason: 'Checking local environment…' });
   const [entries, setEntries] = createSignal<Entry[]>([]);
@@ -54,7 +50,6 @@ function App() {
   const [secret, setSecret] = createSignal<Secret | null>(null);
   const [error, setError] = createSignal('');
   const [visible, setVisible] = createSignal(false);
-  const [editing, setEditing] = createSignal(false);
   const [creating, setCreating] = createSignal(false);
   const [entryId, setEntryId] = createSignal('');
   const [entryPassword, setEntryPassword] = createSignal('');
@@ -100,7 +95,6 @@ function App() {
     setSecret(null);
     setTotp(null);
     setVisible(false);
-    setEditing(false);
     setCreating(false);
     try {
       const next = await invoke<VaultState>('vault_state');
@@ -123,7 +117,7 @@ function App() {
       const list = next.kind === 'available' ? await invoke<Entry[]>('list_entries') : [];
       setEntries(list);
       const current = selected();
-      if (current && !editing() && !list.some(entry => entry.id === current)) {
+      if (current && !dirty() && !list.some(entry => entry.id === current)) {
         requestNumber.current += 1;
         setSelected(null);
         setSecret(null);
@@ -193,7 +187,7 @@ function App() {
   };
   const clearSecrets = () => {
     requestNumber.current += 1;
-    setSecret(null); setTotp(null); setVisible(false); setEditing(false); setCreating(false); setEntryPassword(''); setEntryDetails('');
+    setSecret(null); setTotp(null); setVisible(false); setCreating(false); setEntryPassword(''); setEntryDetails('');
   };
   // checkLock returns true when the managed vault's key needs the master password.
   const checkLock = async () => {
@@ -256,19 +250,37 @@ function App() {
     const at = current.at ? ` at ${new Date(current.at).toLocaleTimeString()}` : '';
     return current.state === 'synced' ? `Synced${at}.` : current.state === 'syncing' ? 'Syncing…' : current.state === 'off' ? 'Passport syncs only when you pull or push.' : current.message || syncLabels[current.state];
   };
+  // An open entry closes, and an unsaved new entry is dropped, after 30
+  // seconds without activity in its form.
+  const [activity, setActivity] = createSignal(0);
+  const touch = () => setActivity(count => count + 1);
   createEffect(() => {
-    if (!secret()) return;
-    const timer = window.setTimeout(() => { setSecret(null); setTotp(null); setVisible(false); setEditing(false); setEntryPassword(''); setEntryDetails(''); }, 30_000);
+    activity();
+    if (entryBusy() || !(secret() || (creating() && entryPassword()))) return;
+    const timer = window.setTimeout(() => { if (creating()) cancelEntry(); else closeEntry(); }, 30_000);
     onCleanup(() => window.clearTimeout(timer));
   });
+  // Unsaved edits to the open entry.
+  const dirty = createMemo(() => {
+    const current = secret();
+    if (!current || creating()) return false;
+    return entryPassword() !== current.password || entryUsername() !== (current.username || '') || entryUrl() !== (current.urls[0] || '') || entryDetails() !== current.other_details;
+  });
+  function loadFields(entry: Secret | null) {
+    setEntryPassword(entry?.password || '');
+    setEntryUsername(entry?.username || '');
+    setEntryUrl(entry?.urls[0] || '');
+    setEntryDetails(entry?.other_details || '');
+  }
+  function closeEntry() {
+    requestNumber.current += 1;
+    setSelected(null); setSecret(null); setTotp(null); setVisible(false);
+    loadFields(null);
+  }
+  const discardChanges = async () => !dirty() || await confirmAction({ title: 'Discard changes?', message: `Your edits to ${selected()} are not saved.`, confirm: 'Discard' });
   createEffect(() => {
     if (!totp()) return;
     const timer = window.setTimeout(() => setTotp(null), Math.max(0, totp().validUntil * 1000 - Date.now()));
-    onCleanup(() => window.clearTimeout(timer));
-  });
-  createEffect(() => {
-    if (!editing() || !entryPassword() || entryBusy()) return;
-    const timer = window.setTimeout(() => { setEditing(false); setCreating(false); setEntryPassword(''); setEntryDetails(''); }, 30_000);
     onCleanup(() => window.clearTimeout(timer));
   });
 
@@ -278,13 +290,13 @@ function App() {
     setSecret(null);
     setTotp(null);
     setVisible(false);
-    setEditing(false);
     setCreating(false);
+    loadFields(null);
     setError('');
     if (await checkLock()) { setSelected(null); return; }
     try {
       const result = await invoke<Secret>('read_entry', { id });
-      if (request === requestNumber.current) setSecret(result);
+      if (request === requestNumber.current) { loadFields(result); setSecret(result); }
     } catch (cause) {
       if (request === requestNumber.current) setError(errorText(cause));
     }
@@ -296,25 +308,12 @@ function App() {
     setSecret(null);
     setVisible(false);
     setCreating(true);
-    setEditing(true);
     setEntryId('');
     setEntryPassword('');
     setEntryUsername('');
     setEntryUrl('');
     setEntryDetails('');
     setError('');
-  }
-
-  function startEdit() {
-    if (!selected() || !secret()) return;
-    setEntryId(selected());
-    setEntryPassword(secret().password);
-    setEntryUsername(secret().username || '');
-    setEntryUrl(secret().urls[0] || '');
-    setEntryDetails(secret().other_details);
-    setCreating(false);
-    setEditing(true);
-    setVisible(false);
   }
 
   async function saveEntry() {
@@ -431,13 +430,12 @@ function App() {
 
   function cancelEntry() {
     if (entryBusy()) return;
-    setEditing(false);
     setCreating(false);
     setEntryPassword('');
     setEntryDetails('');
   }
 
-  // Shared by the Edit pane and the New entry modal.
+  // The New entry modal.
   const entryForm = () => <div class="entry-form">
     <TextField id="entry-id" label="Entry name or path" value={entryId()} onInput={event => setEntryId(event.currentTarget.value)} disabled={!creating() || entryBusy()} placeholder="sites/example.com" autocomplete="off" />
     <TextField id="entry-password" label="Password" type="password" value={entryPassword()} onInput={event => setEntryPassword(event.currentTarget.value)} disabled={entryBusy()} autocomplete="new-password" />
@@ -490,7 +488,7 @@ function App() {
     try {
       await invoke(lock ? 'lock_browser_access' : 'unlock_browser_access');
       setBrowserLocked(lock);
-      if (lock) { requestNumber.current += 1; setSecret(null); setTotp(null); setVisible(false); setEditing(false); setEntryPassword(''); setEntryDetails(''); }
+      if (lock) { requestNumber.current += 1; setSecret(null); setTotp(null); setVisible(false); setEntryPassword(''); setEntryDetails(''); }
     } catch (cause) { setBrowserLockError(errorText(cause)); await refreshBrowserLock(); }
   }
 
@@ -574,22 +572,37 @@ function App() {
   // while someone is typing.
   // The open entry: beside the list in wide windows, under its row (as an
   // accordion) up to 900px, matching the stacked layout in style.css.
-  const detailContent = () => <>{editing() && !creating() ? <>
-        <h2>Edit {selected()}</h2>
-        {entryForm()}
-      </> : selected() ? <><div class="detail-heading"><div><small>VAULT ENTRY</small><h2>{selected()}</h2></div><Button variant="outline" size="sm" onClick={startEdit} disabled={!secret()}>Edit</Button></div>{secret() ? <>{secret().username && <Card padding="sm" class="field-card"><label>Username</label><div class="field-row"><div class="field-value">{secret().username}</div><div class="field-actions">{fieldAction(copiedField() === 'username' ? 'Copied' : 'Copy username', () => void copyField('username', secret().username!), copiedField() === 'username' ? icons.check : icons.copy)}</div></div></Card>}{secret().urls.length > 0 && <Card padding="sm" class="field-card"><label>URL</label><div class="field-row"><div class="field-value">{secret().urls[0]}</div><div class="field-actions">{/^https?:\/\//i.test(secret().urls[0]) && fieldAction('Open in browser', () => void openUrl(secret().urls[0]), icons.external)}{fieldAction(copiedField() === 'url' ? 'Copied' : 'Copy URL', () => void copyField('url', secret().urls[0]), copiedField() === 'url' ? icons.check : icons.copy)}</div></div></Card>}<Card padding="sm" class="field-card"><label>Password</label><div class="field-row"><code class="field-value">{visible() ? secret().password : '••••••••••••'}</code><div class="field-actions">{fieldAction(visible() ? 'Hide password' : 'Show password', () => setVisible(!visible()), visible() ? icons.eyeOff : icons.eye)}{fieldAction(copiedField() === 'password' ? 'Copied' : 'Copy password', () => void copyField('password', secret().password, true), copiedField() === 'password' ? icons.check : icons.copy)}</div></div></Card>{secret().details && <Card padding="sm" class="field-card"><label>Other fields</label><pre>{displayDetails(secret().details)}</pre></Card>}<Button variant="outline" size="sm" disabled={entryBusy()} onClick={() => void deleteEntry()}>Delete</Button><Button variant="outline" size="sm" onClick={() => void showTotp()}>Generate TOTP code</Button>{totp() && <p role="status">TOTP code: <code>{totp().code}</code> · valid for up to {Math.max(0, Math.ceil(totp().validUntil - Date.now() / 1000))} s</p>}<p class="hint">The secret disappears from the screen after 30 seconds. gpg-agent may keep the key cached.</p></> : <p>Open the entry to view its contents.</p>}</> : <p>Select an entry.</p>}</>;
+  const inputRow = (id: string, label: string, input: JSX.Element, actions: JSX.Element) => <div class="plz-field"><label class="plz-field__label" for={id}>{label}</label><div class="input-row">{input}<div class="field-actions">{actions}</div></div></div>;
+  const detailContent = () => <>{selected() ? <>
+    <div class="detail-heading"><div><small>VAULT ENTRY</small><h2>{selected()}</h2></div></div>
+    {secret() ? <div class="entry-editor" onInput={touch} onPointerDown={touch} onKeyDown={touch}>
+      {inputRow('entry-username', 'Username', <input id="entry-username" class="plz-field__input" value={entryUsername()} onInput={event => setEntryUsername(event.currentTarget.value)} disabled={entryBusy()} autocomplete="off" spellcheck={false} />,
+        fieldAction(copiedField() === 'username' ? 'Copied' : 'Copy username', () => void copyField('username', entryUsername()), copiedField() === 'username' ? icons.check : icons.copy))}
+      {inputRow('entry-password', 'Password', <input id="entry-password" class="plz-field__input" type={visible() ? 'text' : 'password'} value={entryPassword()} onInput={event => setEntryPassword(event.currentTarget.value)} disabled={entryBusy()} autocomplete="off" spellcheck={false} />,
+        <>{fieldAction(visible() ? 'Hide password' : 'Show password', () => setVisible(!visible()), visible() ? icons.eyeOff : icons.eye)}{fieldAction(copiedField() === 'password' ? 'Copied' : 'Copy password', () => void copyField('password', entryPassword(), true), copiedField() === 'password' ? icons.check : icons.copy)}</>)}
+      {inputRow('entry-url', 'URL', <input id="entry-url" class="plz-field__input" type="url" value={entryUrl()} onInput={event => setEntryUrl(event.currentTarget.value)} disabled={entryBusy()} placeholder="https://example.com" autocomplete="off" spellcheck={false} />,
+        <>{/^https?:\/\//i.test(entryUrl()) && fieldAction('Open in browser', () => void openUrl(entryUrl()), icons.external)}{fieldAction(copiedField() === 'url' ? 'Copied' : 'Copy URL', () => void copyField('url', entryUrl()), copiedField() === 'url' ? icons.check : icons.copy)}</>)}
+      <div class="plz-field"><label class="plz-field__label" for="entry-details">Other pass lines</label><textarea id="entry-details" class="plz-field__input" value={entryDetails()} onInput={event => setEntryDetails(event.currentTarget.value)} disabled={entryBusy()} rows={4} spellcheck={false} /></div>
+      <div class="entry-editor-actions">
+        <Button disabled={!dirty() || entryBusy() || !entryPassword()} onClick={() => void saveEntry()}>{entryBusy() ? 'Saving…' : 'Save'}</Button>
+        <Button variant="ghost" disabled={!dirty() || entryBusy()} onClick={() => loadFields(secret())}>Discard</Button>
+        <span class="spacer" />
+        <Button variant="outline" size="sm" onClick={() => void showTotp()}>Generate TOTP code</Button>
+        <Button variant="outline" size="sm" disabled={entryBusy()} onClick={() => void deleteEntry()}>Delete</Button>
+      </div>
+      {totp() && <p role="status">TOTP code: <code>{totp().code}</code> · valid for up to {Math.max(0, Math.ceil(totp().validUntil - Date.now() / 1000))} s</p>}
+      <p class="hint">The entry closes after 30 seconds without activity. gpg-agent may keep the key cached.</p>
+    </div> : <p>Opening…</p>}
+  </> : <p>Select an entry.</p>}</>;
   const narrowQuery = window.matchMedia('(max-width: 900px)');
   const [narrow, setNarrow] = createSignal(narrowQuery.matches);
   const onNarrow = (event: MediaQueryListEvent) => setNarrow(event.matches);
   narrowQuery.addEventListener('change', onNarrow);
   onCleanup(() => narrowQuery.removeEventListener('change', onNarrow));
-  function toggleEntry(id: string) {
-    if (selected() === id && !editing()) {
-      requestNumber.current += 1;
-      setSelected(null); setSecret(null); setTotp(null); setVisible(false);
-      return;
-    }
-    void openEntry(id);
+  async function toggleEntry(id: string) {
+    if (!await discardChanges()) return;
+    if (selected() === id) closeEntry();
+    else void openEntry(id);
   }
   // Row shortcuts decrypt the entry on demand: the list only knows names.
   async function quickAction(id: string, kind: 'open' | 'username' | 'password' | 'otp') {
