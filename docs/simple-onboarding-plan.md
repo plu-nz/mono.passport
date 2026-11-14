@@ -50,7 +50,7 @@ The current flows (choose directory, existing GPG key, any Git remote, `gh`, man
 - API calls:
   - `GET /user`: login, id and name.
   - `GET /user/repos?affiliation=owner`: find vault repositories.
-  - `POST /user/repos` with `{"name":"passport-vault","private":true}`.
+  - `POST /user/repos` with `{"name":".passport","private":true}`.
 - **Token storage**: Secret Service over D-Bus. `godbus` is already a dependency. The attributes are `service=nz.plu.passport` and `account=github.com/<login>`. If no Secret Service is available, fall back to a `0600` file in `XDG_CONFIG_HOME/passport/` and show a warning, the same behaviour as `gh`.
 - **Git authentication**: the vault's local `.git/config` gets `credential.https://github.com.helper=!<abs path>/passport git-credential`.
   - `passport git-credential get` answers before Wails starts. It reads the token and prints `username=x-access-token` and `password=<token>`.
@@ -186,5 +186,5 @@ Each phase is one or more commits on `main`, following the repository's usual fl
 | D4 | Minimum password strength | **zxcvbn score ≥ 3 and ≥ 12 characters**, with the diceware suggestion one click away. |
 | D5 | No Secret Service available | **Fallback to a `0600` file with a warning**, like `gh`. |
 | D6 | Auto-lock | Use gpg-agent's cache TTL; add a Passport *Lock after N minutes* setting that calls Lock. |
-| D7 | Repository name | `passport-vault`; on a clash, ask for another name. |
+| D7 | Repository name | `.passport`, like a dotfile in the home directory; on a clash Passport tries `.passport-2` … `.passport-9`. |
 | D8 | Who registers the OAuth App | **Done**: OAuth App "Passport" under `plu-nz`, device flow enabled, no client secret. Client ID `Ov23liE8ep7OS2M8Hfsy` (public; it goes into the code). |

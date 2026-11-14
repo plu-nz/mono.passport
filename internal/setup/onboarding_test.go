@@ -17,7 +17,7 @@ import (
 	"github.com/plu-nz/mono.passport/internal/gpgkey"
 )
 
-const cloneURL = "https://github.com/octo/passport-vault.git"
+const cloneURL = "https://github.com/octo/.passport.git"
 
 // computer isolates HOME, XDG config and GnuPG, as one machine.
 func computer(t *testing.T, root, name string) {
@@ -108,7 +108,7 @@ func TestCreateOnOneComputerRestoreOnAnother(t *testing.T) {
 	if on, _ := AutoSync(); !on {
 		t.Fatal("auto sync not enabled")
 	}
-	if repo, _ := GitHubRepo(); repo != "octo/passport-vault" {
+	if repo, _ := GitHubRepo(); repo != "octo/.passport" {
 		t.Fatalf("GitHubRepo() = %q", repo)
 	}
 	fp, err := VaultFingerprint()
@@ -140,7 +140,7 @@ func TestCreateOnOneComputerRestoreOnAnother(t *testing.T) {
 
 	// A second computer with nothing but the GitHub account and the password.
 	computer(t, root, "second")
-	repo := ghauth.Repo{FullName: "octo/passport-vault", CloneURL: cloneURL, Private: true}
+	repo := ghauth.Repo{FullName: "octo/.passport", CloneURL: cloneURL, Private: true}
 	if _, err := RestoreFromGitHub(context.Background(), account, repo, []byte("wrong password!"), "/opt/passport", func(string) {}); !errors.Is(err, gpgkey.ErrBadPassphrase) {
 		t.Fatalf("restore with a wrong password = %v; want ErrBadPassphrase", err)
 	}

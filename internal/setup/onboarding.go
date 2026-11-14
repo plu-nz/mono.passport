@@ -35,7 +35,7 @@ type Progress func(step string)
 const MinPasswordLength = 12
 
 // RepoName is the default name of the private vault repository.
-const RepoName = "passport-vault"
+const RepoName = ".passport"
 
 // onboardingState is saved after each completed step, never with secrets, so
 // an interrupted create or restore resumes instead of starting over.
@@ -275,7 +275,7 @@ func CreateWithGitHub(ctx context.Context, client *ghauth.Client, account ghauth
 	return VaultInfoCurrent()
 }
 
-// createRepo tries passport-vault, then passport-vault-2 … -9.
+// createRepo tries .passport, then .passport-2 … -9.
 func createRepo(ctx context.Context, client *ghauth.Client, token string) (ghauth.Repo, error) {
 	for i := 1; i <= 9; i++ {
 		name := RepoName
@@ -288,7 +288,7 @@ func createRepo(ctx context.Context, client *ghauth.Client, token string) (ghaut
 		}
 		return repo, err
 	}
-	return ghauth.Repo{}, errors.New("Unable to find a free repository name. Rename an old passport-vault repository on GitHub")
+	return ghauth.Repo{}, errors.New("Unable to find a free repository name. Rename an old .passport repository on GitHub")
 }
 
 // FindGitHubVaults lists the account's private repositories that hold a
