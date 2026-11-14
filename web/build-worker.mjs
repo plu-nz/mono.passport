@@ -15,13 +15,26 @@ const pages = {
   '/': { body: html, csp: baseCsp },
   '/login': { body: login, csp: `${baseCsp}; script-src 'sha256-${loginScriptHash}'` },
 };
+// Icons are rendered from desktop/icons/icon.svg by scripts/render-icons.sh.
+const icons = {
+  '/favicon.svg': { type: 'image/svg+xml', base64: (await readFile(join(root, 'icons', 'favicon.svg'))).toString('base64') },
+  '/favicon.ico': { type: 'image/x-icon', base64: (await readFile(join(root, 'icons', 'favicon.ico'))).toString('base64') },
+  '/apple-touch-icon.png': { type: 'image/png', base64: (await readFile(join(root, 'icons', 'apple-touch-icon.png'))).toString('base64') },
+};
 const source = `const pages = ${JSON.stringify(pages)};
+const icons = ${JSON.stringify(icons)};
+const iconBytes = Object.fromEntries(Object.entries(icons).map(([path, icon]) => [path, Uint8Array.from(atob(icon.base64), c => c.charCodeAt(0))]));
 
 export default {
   async fetch(request) {
     const { pathname } = new URL(request.url);
     if (pathname === '/install.sh') {
       return Response.redirect('https://raw.githubusercontent.com/plu-nz/mono.passport/main/scripts/install.sh', 302);
+    }
+    if (iconBytes[pathname]) {
+      return new Response(request.method === 'HEAD' ? null : iconBytes[pathname], {
+        headers: { 'content-type': icons[pathname].type, 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' },
+      });
     }
     const page = pages[pathname];
     if (!page) return new Response('Page not found', { status: 404 });

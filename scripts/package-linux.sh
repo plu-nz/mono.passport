@@ -49,9 +49,12 @@ if extension_id != identity["id"]:
 pathlib.Path(sys.argv[3]).write_text(extension_id + "\n", encoding="utf-8")
 PY
 install -Dm644 "$repo_dir/desktop/icons/icon.png" "$stage_dir/nz.plu.passport.png"
+mkdir -p "$stage_dir/icons/hicolor"
+cp "$repo_dir"/desktop/icons/hicolor/*.png "$stage_dir/icons/hicolor/"
+cp "$repo_dir/desktop/icons/icon.svg" "$repo_dir/desktop/icons/icon-symbolic.svg" "$stage_dir/icons/"
 install -Dm644 "$repo_dir/scripts/nz.plu.passport.desktop" "$stage_dir/nz.plu.passport.desktop"
 
-tar -C "$stage_dir" -czf "$output_dir/$archive" passport passport-native-host install-native-host.sh extension-id.txt nz.plu.passport.png nz.plu.passport.desktop
+tar -C "$stage_dir" -czf "$output_dir/$archive" passport passport-native-host install-native-host.sh extension-id.txt nz.plu.passport.png nz.plu.passport.desktop icons
 (cd "$output_dir" && sha256sum "$archive" > "$archive.sha256")
 tar -C "$extension_dir" -czf "$output_dir/$extension_archive" .
 (cd "$output_dir" && sha256sum "$extension_archive" > "$extension_archive.sha256")

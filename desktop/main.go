@@ -13,6 +13,9 @@ import (
 //go:embed all:dist
 var assets embed.FS
 
+//go:embed icons/hicolor/256.png
+var appIcon []byte
+
 func main() {
 	// Upgrades from Passage keep their settings, pairings and WebView data.
 	rename.Migrate()
@@ -25,7 +28,9 @@ func main() {
 	go refreshHelper()
 	var window *application.WebviewWindow
 	title := "Passport"
-	var linux application.LinuxOptions
+	// The application ID matches nz.plu.passport.desktop, so docks and
+	// taskbars show the installed icon for the window.
+	linux := application.LinuxOptions{ApplicationID: "nz.plu.passport"}
 	if devRun() {
 		// A distinct app ID gives the development window its own Wayland
 		// class (nz.plu.passport.dev), so window rules and shortcuts can
@@ -35,6 +40,7 @@ func main() {
 	}
 	app := application.New(application.Options{
 		Name:  "Passport",
+		Icon:  appIcon,
 		Linux: linux,
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

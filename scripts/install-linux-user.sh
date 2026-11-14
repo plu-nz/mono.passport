@@ -48,7 +48,12 @@ print(extension_id)
 PY
 )"
 "$user_bin/passport-install-native-host" "$user_bin/passport-native-host" "$extension_id" "$extension_id"
-install -Dm644 desktop/icons/icon.png "$install_root/icons/hicolor/512x512/apps/nz.plu.passport.png"
+for size in 16 24 32 48 64 128 256 512; do
+  install -Dm644 "desktop/icons/hicolor/$size.png" "$install_root/icons/hicolor/${size}x${size}/apps/nz.plu.passport.png"
+done
+install -Dm644 "desktop/icons/icon.svg" "$install_root/icons/hicolor/scalable/apps/nz.plu.passport.svg"
+install -Dm644 "desktop/icons/icon-symbolic.svg" "$install_root/icons/hicolor/symbolic/apps/nz.plu.passport-symbolic.svg"
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then gtk-update-icon-cache -q -t "$install_root/icons/hicolor" || true; fi
 install -Dm644 scripts/nz.plu.passport.desktop "$install_root/applications/nz.plu.passport.desktop"
 
 printf 'Passport installed at %s\n' "$user_bin/passport"

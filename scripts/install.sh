@@ -52,6 +52,15 @@ if [ -f "$temp_dir/install-native-host.sh" ]; then
   install -Dm755 "$temp_dir/install-native-host.sh" "$user_bin/passport-install-native-host"
 fi
 install -Dm644 "$temp_dir/nz.plu.passport.png" "$install_root/icons/hicolor/512x512/apps/nz.plu.passport.png"
+# Releases from 0.5 ship every icon size and the symbolic icon.
+if [ -d "$temp_dir/icons" ]; then
+  for size in 16 24 32 48 64 128 256 512; do
+    install -Dm644 "$temp_dir/icons/hicolor/$size.png" "$install_root/icons/hicolor/${size}x${size}/apps/nz.plu.passport.png"
+  done
+  install -Dm644 "$temp_dir/icons/icon.svg" "$install_root/icons/hicolor/scalable/apps/nz.plu.passport.svg"
+  install -Dm644 "$temp_dir/icons/icon-symbolic.svg" "$install_root/icons/hicolor/symbolic/apps/nz.plu.passport-symbolic.svg"
+  if command -v gtk-update-icon-cache >/dev/null 2>&1; then gtk-update-icon-cache -q -t "$install_root/icons/hicolor" || true; fi
+fi
 install -Dm644 "$temp_dir/nz.plu.passport.desktop" "$install_root/applications/nz.plu.passport.desktop"
 if [ "$extension_available" = true ]; then
   extension_dir="$install_root/passport/extension-chromium"

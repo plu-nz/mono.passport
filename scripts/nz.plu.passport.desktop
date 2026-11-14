@@ -7,3 +7,4 @@ Icon=nz.plu.passport
 Terminal=false
 Categories=Utility;
 StartupNotify=true
+StartupWMClass=nz.plu.passport
