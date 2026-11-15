@@ -32,7 +32,31 @@ func Generate(secret vault.Secret) (Code, error) {
 	}
 	return CodeAt(uri, uint64(time.Now().Unix()))
 }
+
+// Normalize accepts either an otpauth URI or a Base32 key. A bare key uses
+// standard 6-digit SHA-1 codes with a 30-second period.
+func Normalize(raw, label string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", nil
+	}
+	uri := raw
+	if !strings.HasPrefix(raw, "otpauth://") {
+		key := strings.ToUpper(strings.Join(strings.Fields(raw), ""))
+		if _, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.TrimRight(key, "=")); err != nil {
+			return "", errors.New("Use a valid Base32 authenticator key or otpauth URI")
+		}
+		uri = "otpauth://totp/" + url.PathEscape(label) + "?secret=" + url.QueryEscape(key)
+	}
+	if _, err := CodeAt(uri, uint64(time.Now().Unix())); err != nil {
+		return "", err
+	}
+	return uri, nil
+}
 func findURI(secret vault.Secret) string {
+	if secret.TOTPURI != "" {
+		return secret.TOTPURI
+	}
 	for _, line := range append([]string{secret.Password}, strings.Split(secret.Details, "\n")...) {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "otpauth://") {

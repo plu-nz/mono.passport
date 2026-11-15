@@ -219,6 +219,8 @@ func (g *GitVault) CommitChanges() (Status, error) {
 		return Status{}, err
 	}
 	if _, err = g.output("commit", "-m", "Update encrypted vault"); err != nil {
+		args := append([]string{"reset", "-q", "--"}, paths...)
+		g.git(args...)
 		return Status{}, errors.New("Failed to create commit. Configure user.name and user.email in Git")
 	}
 	return g.Status()

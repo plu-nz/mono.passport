@@ -19,6 +19,10 @@ func TestRFC6238(t *testing.T) {
 	}
 }
 func TestDefaultsAndInvalid(t *testing.T) {
+	uriFromKey, err := Normalize("jbsw y3dp ehpk 3pxp", "Example")
+	if err != nil || uriFromKey != "otpauth://totp/Example?secret=JBSWY3DPEHPK3PXP" {
+		t.Fatalf("Normalize(base32) = %q, %v", uriFromKey, err)
+	}
 	uri := "otpauth://totp/Test?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
 	got, err := CodeAt(uri, 59)
 	if err != nil || got.Code != "287082" || got.Remaining != 1 || got.ValidUntil != 60 {

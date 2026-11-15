@@ -280,10 +280,17 @@ func (*DesktopService) Unlock(password string) error {
 
 // ChangeMasterPassword re-protects the key and updates the recovery copy.
 func (*DesktopService) ChangeMasterPassword(current, next string) error {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	prepareImmediate()
 	old, new := []byte(current), []byte(next)
 	defer clear(old)
 	defer clear(new)
-	return setup.ChangeMasterPassword(old, new)
+	if err := setup.ChangeMasterPassword(old, new); err != nil {
+		return err
+	}
+	scheduleSync()
+	return nil
 }
 
 // ExportKey asks where to save the private key, still protected by the
@@ -336,10 +343,11 @@ type SyncState struct {
 
 var syncer struct {
 	sync.Mutex
-	state   SyncState
-	running bool
-	again   bool
-	timer   *time.Timer
+	state        SyncState
+	running      bool
+	again        bool
+	timer        *time.Timer
+	batchStarted time.Time
 }
 
 func (*DesktopService) SyncState() SyncState {
@@ -349,7 +357,7 @@ func (*DesktopService) SyncState() SyncState {
 		return SyncState{State: "off"}
 	}
 	if syncer.state.State == "" {
-		return SyncState{State: "synced"}
+		return SyncState{State: "attention", Message: "Not saved to the remote yet"}
 	}
 	return syncer.state
 }
@@ -363,17 +371,45 @@ func (s *DesktopService) SyncNow() SyncState {
 	return s.SyncState()
 }
 
-// scheduleSync coalesces bursts of edits into one sync shortly after the last.
+// scheduleSync sends essential changes as soon as their local write completes.
 func scheduleSync() {
 	if on, _ := setup.AutoSync(); !on {
 		return
 	}
+	setSyncState(SyncState{State: "attention", Message: "Not saved to the remote yet", At: time.Now()})
 	syncer.Lock()
 	defer syncer.Unlock()
 	if syncer.timer != nil {
 		syncer.timer.Stop()
 	}
-	syncer.timer = time.AfterFunc(time.Second, runSync)
+	syncer.batchStarted = time.Time{}
+	syncer.timer = time.AfterFunc(0, runSync)
+}
+
+// scheduleBatchSync groups metadata changes for 30 seconds, capped at two
+// minutes from the first change. A manual or periodic sync may flush earlier.
+func scheduleBatchSync() {
+	setSyncState(SyncState{State: "attention", Message: "Not saved to the remote yet", At: time.Now()})
+	if on, _ := setup.AutoSync(); !on {
+		return
+	}
+	syncer.Lock()
+	defer syncer.Unlock()
+	now := time.Now()
+	if syncer.batchStarted.IsZero() {
+		syncer.batchStarted = now
+	}
+	delay := 30 * time.Second
+	if untilCap := 2*time.Minute - now.Sub(syncer.batchStarted); untilCap < delay {
+		delay = untilCap
+	}
+	if delay < 0 {
+		delay = 0
+	}
+	if syncer.timer != nil {
+		syncer.timer.Stop()
+	}
+	syncer.timer = time.AfterFunc(delay, runSync)
 }
 
 func setSyncState(state SyncState) {
@@ -396,10 +432,17 @@ func runSync() {
 		return
 	}
 	syncer.running = true
+	if syncer.timer != nil {
+		syncer.timer.Stop()
+		syncer.timer = nil
+	}
+	syncer.batchStarted = time.Time{}
 	syncer.Unlock()
 	for {
+		vaultMutation.Lock()
 		setSyncState(SyncState{State: "syncing", At: time.Now()})
 		setSyncState(syncOnce())
+		vaultMutation.Unlock()
 		syncer.Lock()
 		if !syncer.again {
 			syncer.running = false
@@ -413,6 +456,9 @@ func runSync() {
 
 func syncOnce() SyncState {
 	now := time.Now()
+	if err := flushPending(); err != nil {
+		return SyncState{State: "attention", Message: err.Error(), At: now}
+	}
 	g, err := openGit()
 	if err != nil {
 		return SyncState{State: "attention", Message: err.Error(), At: now}

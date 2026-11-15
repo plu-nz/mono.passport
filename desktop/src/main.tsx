@@ -1,4 +1,4 @@
-import { createSignal, createEffect, createMemo, onCleanup, onMount, type JSX } from 'solid-js';
+import { Index, createSignal, createEffect, createMemo, onCleanup, onMount, type JSX } from 'solid-js';
 import { render } from 'solid-js/web';
 import { Clipboard, Events } from '@wailsio/runtime';
 import { Button, Card, TextField, Theme } from '@plunz/storybook';
@@ -14,20 +14,22 @@ import type { VaultState } from '@passport/core';
 import './style.css';
 import './theme';
 
-type Entry = { id: string; title: string };
-type Secret = { password: string; details: string; other_details: string; username: string | null; urls: string[]; ciphertext_hash: string };
+type Entry = { id: string; title: string; username: string | null; urls: string[]; favorite: boolean; archived: boolean; totp_period: number };
+type Secret = { password: string; details: string; other_details: string; username: string | null; urls: string[]; totp_uri: string; ciphertext_hash: string; favorite: boolean; archived: boolean };
 type GitStatus = { branch: string; upstream: string | null; dirty: boolean; ahead: number; behind: number };
 type GithubStatus = { cli_installed: boolean; login: string | null; vault_git_configured: boolean };
 type Pairing = { origin: string; installationId: string };
 type SyncState = { state: 'off' | 'syncing' | 'synced' | 'offline' | 'attention'; message?: string; at?: string };
-const syncLabels: Record<SyncState['state'], string> = { off: '', syncing: 'Syncing…', synced: 'Synced', offline: 'Offline', attention: 'Needs attention' };
+const syncLabels: Record<SyncState['state'], string> = { off: '', syncing: 'Not saved to remote', synced: 'Saved to remote', offline: 'Not saved to remote', attention: 'Not saved to remote' };
 
-type Tab = 'vault' | 'generator' | 'settings';
+type Tab = 'vault' | 'favorites' | 'archive' | 'generator' | 'settings';
 
 // Bottom navigation: icon above label, the active tab in the accent color.
 const tabs: { id: Tab; label: string; icon: () => JSX.Element }[] = [
-  { id: 'generator', label: 'Generator', icon: () => <><path d="M19.5 9A8 8 0 0 0 5.3 7.2M4.5 4v3.5H8" /><path d="M4.5 15a8 8 0 0 0 14.2 1.8m.8 3.2v-3.5H16" /><path d="M12 9v6M9.4 10.5l5.2 3M14.6 10.5l-5.2 3" /></> },
   { id: 'vault', label: 'Vault', icon: () => <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></> },
+  { id: 'generator', label: 'Generator', icon: () => <><path d="M19.5 9A8 8 0 0 0 5.3 7.2M4.5 4v3.5H8" /><path d="M4.5 15a8 8 0 0 0 14.2 1.8m.8 3.2v-3.5H16" /><path d="M12 9v6M9.4 10.5l5.2 3M14.6 10.5l-5.2 3" /></> },
+  { id: 'favorites', label: 'Favorites', icon: () => <path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3-6.2 3.3L7 14.2 2 9.3l6.9-1z" /> },
+  { id: 'archive', label: 'Archive', icon: () => <><rect x="3" y="4" width="18" height="4" /><path d="M5 8v12h14V8M10 13h4" /></> },
   { id: 'settings', label: 'Settings', icon: () => <><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></> },
 ];
 
@@ -40,6 +42,31 @@ type TotpCode = { code: string; period: number; remaining: number; validUntil: n
 
 // Wails reports Go errors as "RuntimeError: <message>"; show the message only.
 const errorText = (cause: unknown) => String(cause).replace(/^(Runtime)?Error:\s*/, '');
+const isWebAddress = (address: string) => {
+  try {
+    const site = new URL(address);
+    return (site.protocol === 'https:' || site.protocol === 'http:') && !!site.hostname;
+  } catch { return false; }
+};
+
+function EntryIcon(props: { title: string; urls: string[] }) {
+  const [loaded, setLoaded] = createSignal(false);
+  const [candidate, setCandidate] = createSignal(0);
+  const favicons = createMemo(() => {
+    const urls: string[] = [];
+    for (const address of props.urls) {
+      try {
+        const site = new URL(address);
+        if ((site.protocol === 'https:' || site.protocol === 'http:') && site.hostname) {
+          const favicon = new URL('/favicon.ico', site.origin).href;
+          if (!urls.includes(favicon)) urls.push(favicon);
+        }
+      } catch { /* Keep the initials for invalid URLs. */ }
+    }
+    return urls;
+  });
+  return <span class="entry-icon" aria-hidden="true"><span style={{ visibility: loaded() ? 'hidden' : 'visible' }}>{props.title.slice(0, 2).toUpperCase()}</span>{favicons()[candidate()] && <img src={favicons()[candidate()]} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" style={{ opacity: loaded() ? '1' : '0' }} onLoad={() => setLoaded(true)} onError={() => { setLoaded(false); setCandidate(index => index + 1); }} />}</span>;
+}
 
 function App() {
   const [state, setState] = createSignal<VaultState>({ kind: 'unavailable', reason: 'Checking local environment…' });
@@ -54,9 +81,12 @@ function App() {
   const [entryId, setEntryId] = createSignal('');
   const [entryPassword, setEntryPassword] = createSignal('');
   const [entryUsername, setEntryUsername] = createSignal('');
-  const [entryUrl, setEntryUrl] = createSignal('');
+  const [entryUrls, setEntryUrls] = createSignal<string[]>(['']);
+  const [entryAuthenticator, setEntryAuthenticator] = createSignal('');
+  const [authenticatorEditing, setAuthenticatorEditing] = createSignal(false);
   const [entryDetails, setEntryDetails] = createSignal('');
   const [entryBusy, setEntryBusy] = createSignal(false);
+  const [flagPending, setFlagPending] = createSignal<{ id: string; flag: 'favorite' | 'archived'; enabled: boolean } | null>(null);
   const [git, setGit] = createSignal<GitStatus | null>(null);
   const [gitError, setGitError] = createSignal('');
   const [gitRemote, setGitRemote] = createSignal('');
@@ -68,6 +98,8 @@ function App() {
   const [browserLocked, setBrowserLocked] = createSignal<boolean | null>(null);
   const [browserLockError, setBrowserLockError] = createSignal('');
   const [totp, setTotp] = createSignal<TotpCode | null>(null);
+  const [otpTick, setOtpTick] = createSignal(0);
+  const [otpNow, setOtpNow] = createSignal(Date.now());
   const [vaultInfo, setVaultInfo] = createSignal<VaultInfo | null>(null);
   const [vaultPath, setVaultPath] = createSignal('');
   const [cloneRemote, setCloneRemote] = createSignal('');
@@ -115,7 +147,8 @@ function App() {
       const next = await invoke<VaultState>('vault_state');
       setState(next);
       const list = next.kind === 'available' ? await invoke<Entry[]>('list_entries') : [];
-      setEntries(list);
+      const pending = flagPending();
+      setEntries(pending ? list.map(entry => entry.id === pending.id ? { ...entry, [pending.flag]: pending.enabled } : entry) : list);
       const current = selected();
       if (current && !dirty() && !list.some(entry => entry.id === current)) {
         requestNumber.current += 1;
@@ -221,17 +254,26 @@ function App() {
       if (on) await runSync();
     } catch (cause) { setGitError(errorText(cause)); }
   };
-  // Ctrl+F (Cmd+F on macOS) jumps to the vault search from any tab.
+  // Global vault shortcuts also accept Command on macOS.
   let searchInput: HTMLInputElement | undefined;
-  const focusSearch = (event: KeyboardEvent) => {
-    if (event.key.toLowerCase() !== 'f' || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
-    if (showWizard() || keyLocked() || document.querySelector('dialog[open]')) return;
+  const vaultShortcut = (event: KeyboardEvent) => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.repeat) return;
+    const key = event.key.toLowerCase();
+    if (!['f', 'n', 'l'].includes(key) || showWizard() || keyLocked() || document.querySelector('dialog[open]')) return;
+    if (key === 'n' && state().kind !== 'available') return;
+    if (key === 'l' && (state().kind !== 'available' || !managedRepo())) return;
     event.preventDefault();
-    setActiveTab('vault');
-    queueMicrotask(() => { searchInput?.focus(); searchInput?.select(); });
+    if (key === 'f') {
+      setActiveTab('vault');
+      queueMicrotask(() => { searchInput?.focus(); searchInput?.select(); });
+    } else if (key === 'n') {
+      void startCreate();
+    } else {
+      void lockNow();
+    }
   };
-  window.addEventListener('keydown', focusSearch);
-  onCleanup(() => window.removeEventListener('keydown', focusSearch));
+  window.addEventListener('keydown', vaultShortcut);
+  onCleanup(() => window.removeEventListener('keydown', vaultShortcut));
   onCleanup(Events.On('passport:sync', event => setSyncState(event.data as SyncState)));
   onMount(async () => {
     await refreshOnboarding();
@@ -248,28 +290,21 @@ function App() {
   const syncDescription = () => {
     const current = syncState();
     const at = current.at ? ` at ${new Date(current.at).toLocaleTimeString()}` : '';
-    return current.state === 'synced' ? `Synced${at}.` : current.state === 'syncing' ? 'Syncing…' : current.state === 'off' ? 'Passport syncs only when you pull or push.' : current.message || syncLabels[current.state];
+    return current.state === 'synced' ? `Saved to remote${at}.` : current.state === 'syncing' ? 'Not saved to remote. Sending…' : current.state === 'off' ? 'Passport syncs only when you pull or push.' : current.message || syncLabels[current.state];
   };
-  // An open entry closes, and an unsaved new entry is dropped, after 30
-  // seconds without activity in its form.
-  const [activity, setActivity] = createSignal(0);
-  const touch = () => setActivity(count => count + 1);
-  createEffect(() => {
-    activity();
-    if (entryBusy() || !(secret() || (creating() && entryPassword()))) return;
-    const timer = window.setTimeout(() => { if (creating()) cancelEntry(); else closeEntry(); }, 30_000);
-    onCleanup(() => window.clearTimeout(timer));
-  });
   // Unsaved edits to the open entry.
   const dirty = createMemo(() => {
     const current = secret();
     if (!current || creating()) return false;
-    return entryPassword() !== current.password || entryUsername() !== (current.username || '') || entryUrl() !== (current.urls[0] || '') || entryDetails() !== current.other_details;
+    return entryId().trim() !== selected() || entryPassword() !== current.password || entryUsername() !== (current.username || '') || JSON.stringify(entryUrls().map(url => url.trim()).filter(Boolean)) !== JSON.stringify(current.urls) || entryAuthenticator().trim() !== current.totp_uri || entryDetails() !== current.other_details;
   });
-  function loadFields(entry: Secret | null) {
+  function loadFields(entry: Secret | null, id = '') {
+    setEntryId(id);
     setEntryPassword(entry?.password || '');
     setEntryUsername(entry?.username || '');
-    setEntryUrl(entry?.urls[0] || '');
+    setEntryUrls(entry?.urls.length ? [...entry.urls] : ['']);
+    setEntryAuthenticator(entry?.totp_uri || '');
+    setAuthenticatorEditing(false);
     setEntryDetails(entry?.other_details || '');
   }
   function closeEntry() {
@@ -280,7 +315,25 @@ function App() {
   const discardChanges = async () => !dirty() || await confirmAction({ title: 'Discard changes?', message: `Your edits to ${selected()} are not saved.`, confirm: 'Discard' });
   createEffect(() => {
     if (!totp()) return;
-    const timer = window.setTimeout(() => setTotp(null), Math.max(0, totp().validUntil * 1000 - Date.now()));
+    const timer = window.setTimeout(() => setOtpTick(tick => tick + 1), Math.max(0, totp().validUntil * 1000 - Date.now()));
+    onCleanup(() => window.clearTimeout(timer));
+  });
+  createEffect(() => {
+    if (!totp()) return;
+    setOtpNow(Date.now());
+    const timer = window.setInterval(() => setOtpNow(Date.now()), 1000);
+    onCleanup(() => window.clearInterval(timer));
+  });
+  createEffect(() => {
+    otpTick();
+    const authenticator = entryAuthenticator().trim();
+    if (!authenticator || (!secret() && !creating())) { setTotp(null); return; }
+    const timer = window.setTimeout(async () => {
+      try {
+        const code = await invoke<TotpCode>('preview_totp', { authenticator, label: entryId().trim() || 'Passport' });
+        if (entryAuthenticator().trim() === authenticator) setTotp(code);
+      } catch { if (entryAuthenticator().trim() === authenticator) setTotp(null); }
+    }, 300);
     onCleanup(() => window.clearTimeout(timer));
   });
 
@@ -296,13 +349,14 @@ function App() {
     if (await checkLock()) { setSelected(null); return; }
     try {
       const result = await invoke<Secret>('read_entry', { id });
-      if (request === requestNumber.current) { loadFields(result); setSecret(result); }
+      if (request === requestNumber.current) { loadFields(result, id); setSecret(result); }
     } catch (cause) {
       if (request === requestNumber.current) setError(errorText(cause));
     }
   }
 
-  function startCreate() {
+  async function startCreate(): Promise<boolean> {
+    if (!await discardChanges()) return false;
     requestNumber.current += 1;
     setSelected(null);
     setSecret(null);
@@ -311,21 +365,35 @@ function App() {
     setEntryId('');
     setEntryPassword('');
     setEntryUsername('');
-    setEntryUrl('');
+    setEntryUrls(['']);
+    setEntryAuthenticator('');
+    setAuthenticatorEditing(false);
     setEntryDetails('');
     setError('');
+    return true;
   }
 
   async function saveEntry() {
-    if (!entryId().trim() || !entryPassword() || (!creating() && !secret())) return;
+    if (flagPending() || !entryId().trim() || !entryPassword() || (!creating() && !secret())) return;
     setEntryBusy(true);
     setError('');
     try {
       const id = entryId().trim();
-      await invoke(creating() ? 'create_login_entry' : 'update_login_entry', {
-        id, password: entryPassword(), username: entryUsername(), url: entryUrl(),
-        details: entryDetails(), ...(creating() ? {} : { expectedHash: secret()!.ciphertext_hash })
-      });
+      const fields = { password: entryPassword(), username: entryUsername(), urls: entryUrls().map(url => url.trim()).filter(Boolean), authenticator: entryAuthenticator().trim(), details: entryDetails() };
+      if (creating()) {
+        await invoke('create_login_fields', { id, ...fields });
+      } else {
+        // Save the content under the current name, then rename with the new version.
+        const current = secret()!;
+        const oldId = selected()!;
+        let hash = current.ciphertext_hash;
+        if (fields.password !== current.password || fields.username !== (current.username || '') || JSON.stringify(fields.urls) !== JSON.stringify(current.urls) || fields.authenticator !== current.totp_uri || fields.details !== current.other_details) {
+          const updated = await invoke<Secret>('update_login_fields', { id: oldId, ...fields, expectedHash: hash });
+          hash = updated.ciphertext_hash;
+          setSecret(updated);
+        }
+        if (id !== oldId) await invoke('rename_entry', { id: oldId, newId: id, expectedHash: hash });
+      }
       setEntryPassword('');
       setEntryDetails('');
       await refresh();
@@ -336,7 +404,7 @@ function App() {
   }
 
   async function deleteEntry() {
-    if (!selected() || !secret() || entryBusy()) return;
+    if (!selected() || !secret() || entryBusy() || flagPending()) return;
     if (!await confirmAction({ title: `Delete ${selected()}?`, message: 'The entry is removed from the vault and the deletion syncs to your other computers. Older Git history still holds the encrypted file.', confirm: 'Delete' })) return;
     setEntryBusy(true);
     setError('');
@@ -346,6 +414,36 @@ function App() {
       await refreshGit();
     } catch (cause) { setError(errorText(cause)); }
     finally { setEntryBusy(false); }
+  }
+
+  async function changeEntryFlag(flag: 'favorite' | 'archived') {
+    const id = selected();
+    const current = secret();
+    if (!id || !current || entryBusy() || flagPending()) return;
+    const enabled = !current[flag];
+    if (flag === 'archived') {
+      if (!await discardChanges()) return;
+      if (!await confirmAction({
+        title: `${enabled ? 'Archive' : 'Restore'} ${id}?`,
+        message: enabled ? 'This entry will move to Archive and stop appearing in browser extension suggestions.' : 'This entry will return to Vault and become available to browser extensions again.',
+        confirm: enabled ? 'Archive' : 'Restore',
+      })) return;
+      loadFields(current, id);
+    }
+    setFlagPending({ id, flag, enabled });
+    setSecret({ ...current, [flag]: enabled });
+    setEntries(list => list.map(entry => entry.id === id ? { ...entry, [flag]: enabled } : entry));
+    setError('');
+    try {
+      const updated = await invoke<Secret>('set_entry_flag', { id, flag, enabled, expectedHash: current.ciphertext_hash });
+      if (selected() === id && secret()?.ciphertext_hash === current.ciphertext_hash) setSecret(updated);
+      if (selected() === id && ((flag === 'favorite' && activeTab() === 'favorites' && !enabled) || (flag === 'archived' && ((activeTab() === 'archive') !== enabled)))) closeEntry();
+      await refreshGit();
+    } catch (cause) {
+      setEntries(list => list.map(entry => entry.id === id ? { ...entry, [flag]: current[flag] } : entry));
+      if (selected() === id && secret()?.ciphertext_hash === current.ciphertext_hash) setSecret(current);
+      setError(errorText(cause));
+    } finally { setFlagPending(null); }
   }
 
   // Generator: the password lives only while the tab is open; the options are
@@ -412,10 +510,10 @@ function App() {
       }, 45_000);
     } catch (cause) { setGenStatus(`Copy failed: ${cause}`); }
   }
-  function createFromGenerator() {
+  async function createFromGenerator() {
     const password = generated();
+    if (!await startCreate()) return;
     setActiveTab('vault');
-    startCreate();
     setEntryPassword(password);
   }
   const genSets: [keyof GeneratorOptions, string][] = [['upper', 'A–Z'], ['lower', 'a–z'], ['numbers', '0–9'], ['special', specialChars]];
@@ -435,12 +533,42 @@ function App() {
     setEntryDetails('');
   }
 
+  const setWebsite = (index: number, value: string) => setEntryUrls(urls => urls.map((url, at) => at === index ? value : url));
+  const removeWebsite = (index: number) => setEntryUrls(urls => urls.length === 1 ? [''] : urls.filter((_, at) => at !== index));
+  const moveWebsite = (index: number, direction: -1 | 1) => setEntryUrls(urls => {
+    const next = [...urls];
+    const other = index + direction;
+    if (other < 0 || other >= next.length) return urls;
+    [next[index], next[other]] = [next[other], next[index]];
+    return next;
+  });
+  const websitesEditor = () => <div class="plz-field websites-field"><label class="plz-field__label" for="entry-url-0">Websites</label>
+    <Index each={entryUrls()}>{(url, index) => <div class="website-row"><input id={`entry-url-${index}`} class="plz-field__input" type="text" inputmode="url" value={url()} onInput={event => setWebsite(index, event.currentTarget.value)} disabled={entryBusy()} placeholder="https://example.com or androidapp://package" autocomplete="off" spellcheck={false} /><button class="icon-button field-action" type="button" aria-label={`Move website ${index + 1} up`} title="Move up" disabled={entryBusy() || index === 0} onClick={() => moveWebsite(index, -1)}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{icons.up()}</svg></button><button class="icon-button field-action" type="button" aria-label={`Move website ${index + 1} down`} title="Move down" disabled={entryBusy() || index === entryUrls().length - 1} onClick={() => moveWebsite(index, 1)}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{icons.down()}</svg></button><button class="icon-button field-action" type="button" aria-label={`Remove website ${index + 1}`} title="Remove website" disabled={entryBusy()} onClick={() => removeWebsite(index)}>×</button></div>}</Index>
+    <Button variant="ghost" size="sm" disabled={entryBusy() || entryUrls().length >= 32} onClick={() => setEntryUrls(urls => [...urls, ''])}>+ Add website</Button>
+    <p class="plz-field__hint">The first website is primary. Its favicon is tried first.</p>
+  </div>;
+  let authenticatorInput: HTMLInputElement | undefined;
+  const editAuthenticator = () => {
+    setAuthenticatorEditing(true);
+    queueMicrotask(() => authenticatorInput?.focus());
+  };
+  const otpProgress = (period: number, list = false) => <div class={list ? 'otp-progress entry-otp-progress' : 'otp-progress'} aria-hidden="true"><span style={{ 'animation-duration': `${period}s`, 'animation-delay': `-${(Date.now() / 1000) % period}s` }} /></div>;
+  const authenticatorEditor = () => <div class="plz-field authenticator-field"><label class="plz-field__label" for="entry-authenticator">Authenticator key</label>
+    <div class="authenticator-input-row">{totp() && !authenticatorEditing() ? <button id="entry-authenticator" class="authenticator-code" type="button" aria-label="Edit authenticator key" title="Click to edit authenticator key" disabled={entryBusy()} onClick={editAuthenticator}>{totp()!.code.replace(/(\d{3})(?=\d)/g, '$1 ')}</button> : <input ref={authenticatorInput} id="entry-authenticator" class="plz-field__input" type="text" value={entryAuthenticator()} onInput={event => { setEntryAuthenticator(event.currentTarget.value); setTotp(null); }} onFocus={() => setAuthenticatorEditing(true)} onBlur={() => setAuthenticatorEditing(false)} onKeyDown={event => { if (event.key === 'Enter' || event.key === 'Escape') event.currentTarget.blur(); }} disabled={entryBusy()} placeholder="Base32 key or otpauth:// URI" autocomplete="off" spellcheck={false} />}{totp() && <><span class="authenticator-countdown" role="timer" aria-label={`Code resets in ${Math.max(0, Math.ceil((totp()!.validUntil * 1000 - otpNow()) / 1000))} seconds`}>{Math.max(0, Math.ceil((totp()!.validUntil * 1000 - otpNow()) / 1000))}s</span><button class="icon-button field-action" type="button" aria-label={copiedField() === 'otp-preview' ? 'Copied' : 'Copy authenticator code'} title="Copy authenticator code" onClick={() => void copyField('otp-preview', totp()!.code, true)}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{copiedField() === 'otp-preview' ? icons.check() : icons.copy()}</svg></button></>}</div>
+    {totp() && otpProgress(totp()!.period)}
+  </div>;
+
   // The New entry modal.
   const entryForm = () => <div class="entry-form">
     <TextField id="entry-id" label="Entry name or path" value={entryId()} onInput={event => setEntryId(event.currentTarget.value)} disabled={!creating() || entryBusy()} placeholder="sites/example.com" autocomplete="off" />
-    <TextField id="entry-password" label="Password" type="password" value={entryPassword()} onInput={event => setEntryPassword(event.currentTarget.value)} disabled={entryBusy()} autocomplete="new-password" />
+    <h3>Login credentials</h3>
     <TextField id="entry-username" label="Username" value={entryUsername()} onInput={event => setEntryUsername(event.currentTarget.value)} disabled={entryBusy()} autocomplete="off" />
-    <TextField id="entry-url" label="URL" type="url" value={entryUrl()} onInput={event => setEntryUrl(event.currentTarget.value)} disabled={entryBusy()} placeholder="https://example.com" autocomplete="url" />
+    <TextField id="entry-password" label="Password" type="password" value={entryPassword()} onInput={event => setEntryPassword(event.currentTarget.value)} disabled={entryBusy()} autocomplete="new-password" />
+    <h3>Authenticator</h3>
+    {authenticatorEditor()}
+    <h3>Autofill options</h3>
+    {websitesEditor()}
+    <h3>Additional fields</h3>
     <div class="plz-field"><label class="plz-field__label" for="entry-details">Other pass lines</label><textarea id="entry-details" class="plz-field__input" aria-describedby="entry-details-hint" value={entryDetails()} onInput={event => setEntryDetails(event.currentTarget.value)} disabled={entryBusy()} rows={5} spellcheck={false} /><p id="entry-details-hint" class="plz-field__hint">The first line is the password. GNU pass can still read the other fields.</p></div>
     <div class="form-actions"><Button disabled={entryBusy() || !entryId().trim() || !entryPassword()} onClick={() => void saveEntry()}>{entryBusy() ? 'Saving…' : 'Save'}</Button><Button variant="ghost" disabled={entryBusy()} onClick={cancelEntry}>Cancel</Button></div>
   </div>;
@@ -453,7 +581,11 @@ function App() {
     dialog.querySelector<HTMLInputElement>('#entry-id')?.focus();
   });
 
-  const filtered = createMemo(() => entries().filter(entry => entry.id.toLocaleLowerCase().includes(query().toLocaleLowerCase())));
+  const filtered = createMemo(() => entries().filter(entry => {
+    const tab = activeTab();
+    const inSection = tab === 'archive' ? entry.archived : tab === 'favorites' ? entry.favorite && !entry.archived : !entry.archived;
+    return inSection && entry.id.toLocaleLowerCase().includes(query().toLocaleLowerCase());
+  }));
 
   async function sync(operation: 'git_pull' | 'git_push') {
     setGitError('');
@@ -490,17 +622,6 @@ function App() {
       setBrowserLocked(lock);
       if (lock) { requestNumber.current += 1; setSecret(null); setTotp(null); setVisible(false); setEntryPassword(''); setEntryDetails(''); }
     } catch (cause) { setBrowserLockError(errorText(cause)); await refreshBrowserLock(); }
-  }
-
-  async function showTotp() {
-    if (!selected()) return;
-    const request = requestNumber.current;
-    try {
-      const code = await invoke<TotpCode>('generate_totp', { id: selected() });
-      if (request === requestNumber.current) { setTotp(code); setError(''); }
-    } catch (cause) {
-      if (request === requestNumber.current) { setTotp(null); setError(errorText(cause)); }
-    }
   }
 
   async function approvePairing() {
@@ -574,25 +695,26 @@ function App() {
   // accordion) up to 900px, matching the stacked layout in style.css.
   const inputRow = (id: string, label: string, input: JSX.Element, actions: JSX.Element) => <div class="plz-field"><label class="plz-field__label" for={id}>{label}</label><div class="input-row">{input}<div class="field-actions">{actions}</div></div></div>;
   const detailContent = () => <>{selected() ? <>
-    <div class="detail-heading"><div><small>VAULT ENTRY</small><h2>{selected()}</h2></div></div>
-    {secret() ? <div class="entry-editor" onInput={touch} onPointerDown={touch} onKeyDown={touch}>
+    {secret() ? <div class="entry-editor">
+      <div class="plz-field"><label class="plz-field__label" for="entry-name">Name</label><input id="entry-name" class="plz-field__input entry-name" value={entryId()} onInput={event => setEntryId(event.currentTarget.value)} disabled={entryBusy()} placeholder="sites/example.com" autocomplete="off" spellcheck={false} /></div>
+      <section class="entry-section"><h3>Login credentials</h3>
       {inputRow('entry-username', 'Username', <input id="entry-username" class="plz-field__input" value={entryUsername()} onInput={event => setEntryUsername(event.currentTarget.value)} disabled={entryBusy()} autocomplete="off" spellcheck={false} />,
         fieldAction(copiedField() === 'username' ? 'Copied' : 'Copy username', () => void copyField('username', entryUsername()), copiedField() === 'username' ? icons.check : icons.copy))}
       {inputRow('entry-password', 'Password', <input id="entry-password" class="plz-field__input" type={visible() ? 'text' : 'password'} value={entryPassword()} onInput={event => setEntryPassword(event.currentTarget.value)} disabled={entryBusy()} autocomplete="off" spellcheck={false} />,
         <>{fieldAction(visible() ? 'Hide password' : 'Show password', () => setVisible(!visible()), visible() ? icons.eyeOff : icons.eye)}{fieldAction(copiedField() === 'password' ? 'Copied' : 'Copy password', () => void copyField('password', entryPassword(), true), copiedField() === 'password' ? icons.check : icons.copy)}</>)}
-      {inputRow('entry-url', 'URL', <input id="entry-url" class="plz-field__input" type="url" value={entryUrl()} onInput={event => setEntryUrl(event.currentTarget.value)} disabled={entryBusy()} placeholder="https://example.com" autocomplete="off" spellcheck={false} />,
-        <>{/^https?:\/\//i.test(entryUrl()) && fieldAction('Open in browser', () => void openUrl(entryUrl()), icons.external)}{fieldAction(copiedField() === 'url' ? 'Copied' : 'Copy URL', () => void copyField('url', entryUrl()), copiedField() === 'url' ? icons.check : icons.copy)}</>)}
+      </section>
+      <section class="entry-section"><h3>Authenticator</h3>{authenticatorEditor()}</section>
+      <section class="entry-section"><h3>Autofill options</h3>{websitesEditor()}</section>
+      <section class="entry-section"><h3>Additional fields</h3>
       <div class="plz-field"><label class="plz-field__label" for="entry-details">Other pass lines</label><textarea id="entry-details" class="plz-field__input" value={entryDetails()} onInput={event => setEntryDetails(event.currentTarget.value)} disabled={entryBusy()} rows={4} spellcheck={false} /></div>
+      </section>
       <div class="entry-editor-actions">
-        <Button disabled={!dirty() || entryBusy() || !entryPassword()} onClick={() => void saveEntry()}>{entryBusy() ? 'Saving…' : 'Save'}</Button>
-        <Button variant="ghost" disabled={!dirty() || entryBusy()} onClick={() => loadFields(secret())}>Discard</Button>
-        <span class="spacer" />
-        <Button variant="outline" size="sm" onClick={() => void showTotp()}>Generate TOTP code</Button>
-        <Button variant="outline" size="sm" disabled={entryBusy()} onClick={() => void deleteEntry()}>Delete</Button>
+        <Button variant={secret()!.favorite ? 'solid' : 'outline'} size="sm" disabled={entryBusy() || !!flagPending()} aria-pressed={secret()!.favorite} onClick={() => void changeEntryFlag('favorite')}>Favorite</Button>
+        <Button variant="outline" size="sm" disabled={entryBusy() || !!flagPending()} onClick={() => void changeEntryFlag('archived')}>{secret()!.archived ? 'Restore' : 'Archive'}</Button>
+        {secret()!.archived && <Button variant="outline" size="sm" disabled={entryBusy() || !!flagPending()} onClick={() => void deleteEntry()}>Delete</Button>}
+        <div class="entry-save-actions"><Button variant="ghost" disabled={!dirty() || entryBusy()} onClick={() => loadFields(secret(), selected() || '')}>Discard</Button><Button disabled={!dirty() || entryBusy() || !!flagPending() || !entryPassword() || !entryId().trim()} onClick={() => void saveEntry()}>{entryBusy() ? 'Saving…' : 'Save'}</Button></div>
       </div>
-      {totp() && <p role="status">TOTP code: <code>{totp().code}</code> · valid for up to {Math.max(0, Math.ceil(totp().validUntil - Date.now() / 1000))} s</p>}
-      <p class="hint">The entry closes after 30 seconds without activity. gpg-agent may keep the key cached.</p>
-    </div> : <p>Opening…</p>}
+    </div> : <div class="detail-heading"><div><small>VAULT ENTRY</small><h2>{selected()}</h2></div></div>}
   </> : <p>Select an entry.</p>}</>;
   const narrowQuery = window.matchMedia('(max-width: 900px)');
   const [narrow, setNarrow] = createSignal(narrowQuery.matches);
@@ -604,7 +726,7 @@ function App() {
     if (selected() === id) closeEntry();
     else void openEntry(id);
   }
-  // Row shortcuts decrypt the entry on demand: the list only knows names.
+  // Row shortcuts decrypt the entry on demand; the list never holds passwords.
   async function quickAction(id: string, kind: 'open' | 'username' | 'password' | 'otp') {
     setError('');
     if (await checkLock()) return;
@@ -618,8 +740,9 @@ function App() {
       }
       const entry = await invoke<Secret>('read_entry', { id });
       if (kind === 'open') {
-        if (!entry.urls[0]) setError(`${id} has no URL.`);
-        else await openUrl(entry.urls[0]);
+        const website = entry.urls.find(isWebAddress);
+        if (!website) setError(`${id} has no website URL.`);
+        else await openUrl(website);
       } else if (kind === 'username') {
         if (!entry.username) setError(`${id} has no username.`);
         else await copyField(`${id}:username`, entry.username);
@@ -629,9 +752,9 @@ function App() {
     } catch (cause) { setError(errorText(cause)); }
   }
   const unavailable = createMemo(() => state().kind !== 'available');
-  const tabButton = (tab: (typeof tabs)[number]) => <button class={activeTab() === tab.id ? 'active' : ''} aria-current={activeTab() === tab.id ? 'page' : undefined} onClick={() => setActiveTab(tab.id)}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{tab.icon()}</svg><span>{tab.label}</span></button>;
+  const tabButton = (tab: (typeof tabs)[number]) => <button class={activeTab() === tab.id ? 'active' : ''} aria-current={activeTab() === tab.id ? 'page' : undefined} onClick={async () => { if (activeTab() === tab.id || !await discardChanges()) return; closeEntry(); setActiveTab(tab.id); }}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{tab.icon()}</svg><span>{tab.label}</span></button>;
   const appBar = () => {
-    const toolbar = activeTab() === 'vault' && <div class="toolbar">{managedRepo() && <Button variant="outline" class="toolbar-lock" onClick={() => void lockNow()}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>Lock</Button>}<input ref={searchInput} type="search" aria-label="Search entries" placeholder="Search vault…" value={query()} disabled={unavailable()} onInput={event => setQuery(event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Escape') setQuery(''); }} /><Button class="toolbar-new" disabled={unavailable()} onClick={startCreate}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New</Button></div>;
+    const toolbar = (activeTab() === 'vault' || activeTab() === 'favorites' || activeTab() === 'archive') && <div class="toolbar">{managedRepo() && <Button variant="outline" class="toolbar-lock" onClick={() => void lockNow()}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>Lock</Button>}<input ref={searchInput} type="search" aria-label="Search entries" placeholder="Search entries…" value={query()} disabled={unavailable()} onInput={event => setQuery(event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Escape') setQuery(''); }} />{activeTab() === 'vault' && <Button class="toolbar-new" disabled={unavailable()} onClick={() => void startCreate()}><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New</Button>}</div>;
     const nav = <nav class="app-nav" aria-label="Sections">{tabs.map(tabButton)}</nav>;
     return <div class="app-bar">{nav}{toolbar}</div>;
   };
@@ -753,10 +876,10 @@ function App() {
       <p class="hint">Configure the remote through Git or  <code>pass git</code>. Conflicts and local changes prevent automatic sync.</p>
     </Card>}
     </details>}
-    {activeTab() === 'vault' && (state().kind !== 'available' ? <section class="notice">{state().kind === 'onboarding' ? 'Setting up the vault was interrupted.' : (state() as { reason: string }).reason}{(state().kind === 'onboarding' || (vaultInfo() && !vaultInfo().initialized && vaultInfo().source !== 'environment')) && <Button size="sm" onClick={() => setSkipWizard(false)}>{state().kind === 'onboarding' ? 'Continue setup' : 'Set up with GitHub'}</Button>}</section> : <>
+    {(activeTab() === 'vault' || activeTab() === 'favorites' || activeTab() === 'archive') && (state().kind !== 'available' ? <section class="notice">{state().kind === 'onboarding' ? 'Setting up the vault was interrupted.' : (state() as { reason: string }).reason}{(state().kind === 'onboarding' || (vaultInfo() && !vaultInfo().initialized && vaultInfo().source !== 'environment')) && <Button size="sm" onClick={() => setSkipWizard(false)}>{state().kind === 'onboarding' ? 'Continue setup' : 'Set up with GitHub'}</Button>}</section> : <>
       <div class="workspace"><nav aria-label="Vault entries">{filtered().length ? filtered().map(entry => <>
-        <div class={selected() === entry.id ? 'entry selected' : 'entry'}>
-          <button class="entry-main" aria-expanded={selected() === entry.id} onClick={() => void toggleEntry(entry.id)}><span class="entry-icon" aria-hidden="true">{entry.title.slice(0, 2).toUpperCase()}</span><span class="entry-text"><strong>{entry.title}</strong><small>{entry.id}</small></span></button>
+        <div class={`${selected() === entry.id ? 'entry selected' : 'entry'}${entry.totp_period && selected() !== entry.id ? ' has-totp' : ''}`}>
+          <button class="entry-main" aria-expanded={selected() === entry.id} onClick={() => void toggleEntry(entry.id)}><EntryIcon title={entry.title} urls={entry.urls} /><span class="entry-text"><strong>{entry.title}</strong><small>{entry.username || entry.urls[0] || ''}</small></span></button>
           <div class="entry-actions">
             {fieldAction('Open in browser', () => void quickAction(entry.id, 'open'), icons.external)}
             {fieldAction(copiedField() === `${entry.id}:username` ? 'Copied' : 'Copy username', () => void quickAction(entry.id, 'username'), copiedField() === `${entry.id}:username` ? icons.check : icons.user)}
@@ -764,9 +887,10 @@ function App() {
             {fieldAction(copiedField() === `${entry.id}:otp` ? 'Copied' : 'Copy verification code', () => void quickAction(entry.id, 'otp'), copiedField() === `${entry.id}:otp` ? icons.check : icons.otp)}
             {fieldAction(selected() === entry.id ? 'Collapse details' : 'Expand details', () => void toggleEntry(entry.id), selected() === entry.id ? icons.up : icons.down)}
           </div>
+          {entry.totp_period > 0 && selected() !== entry.id && otpProgress(entry.totp_period, true)}
         </div>
         {narrow() && selected() === entry.id && <section class="detail detail-inline" aria-label="Entry details">{detailContent()}</section>}
-      </>) : <p>No entries found.</p>}</nav>
+      </>) : <p>{activeTab() === 'favorites' ? 'No favorites found.' : activeTab() === 'archive' ? 'No archived entries found.' : 'No entries found.'}</p>}</nav>
       {!narrow() && <section class="detail" aria-label="Entry details">{detailContent()}</section>}</div>
     </>)}
     {error() && !creating() && <p class="error" role="alert">{error()}</p>}

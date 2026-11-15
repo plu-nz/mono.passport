@@ -10,7 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -19,10 +21,13 @@ import (
 )
 
 type Entry struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Username *string  `json:"username"`
-	URLs     []string `json:"urls"`
+	ID         string   `json:"id"`
+	Title      string   `json:"title"`
+	Username   *string  `json:"username"`
+	URLs       []string `json:"urls"`
+	Favorite   bool     `json:"favorite"`
+	Archived   bool     `json:"archived"`
+	TOTPPeriod uint64   `json:"totp_period"`
 }
 type Secret struct {
 	Password       string   `json:"password"`
@@ -30,9 +35,14 @@ type Secret struct {
 	OtherDetails   string   `json:"other_details"`
 	Username       *string  `json:"username"`
 	URLs           []string `json:"urls"`
+	TOTPURI        string   `json:"totp_uri"`
 	CiphertextHash string   `json:"ciphertext_hash"`
+	Favorite       bool     `json:"favorite"`
+	Archived       bool     `json:"archived"`
 }
 type Vault struct{ root string }
+
+var androidPackage = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$`)
 
 func OpenEnv() (*Vault, error) {
 	path, _, err := setup.ActiveVaultPath()
@@ -136,7 +146,41 @@ func (v *Vault) List() ([]Entry, error) {
 		return nil, err
 	}
 	sort.Slice(entries, func(i, j int) bool { return strings.ToLower(entries[i].ID) < strings.ToLower(entries[j].ID) })
+	for i := range entries {
+		secret, err := v.Read(entries[i].ID)
+		if err != nil {
+			continue
+		}
+		entries[i].Username = secret.Username
+		entries[i].URLs = secret.URLs
+		entries[i].Favorite = secret.Favorite
+		entries[i].Archived = secret.Archived
+		uri := secret.TOTPURI
+		if uri == "" {
+			uri = secret.Password // pass-otp can keep the URI on the first line.
+		}
+		entries[i].TOTPPeriod = totpPeriod(uri)
+	}
 	return entries, nil
+}
+
+func totpPeriod(uri string) uint64 {
+	if !strings.HasPrefix(uri, "otpauth://totp/") {
+		return 0
+	}
+	parsed, err := url.Parse(uri)
+	if err != nil {
+		return 0
+	}
+	value := parsed.Query().Get("period")
+	if value == "" {
+		return 30
+	}
+	period, err := strconv.ParseUint(value, 10, 64)
+	if err != nil || period < 1 || period > 3600 {
+		return 0
+	}
+	return period
 }
 func hashFile(path string) (string, error) {
 	data, err := os.ReadFile(path)
@@ -188,13 +232,22 @@ func ParseSecret(content string) Secret {
 	result := Secret{Password: password, Details: strings.TrimRightFunc(details, unicode.IsSpace), URLs: []string{}}
 	var other strings.Builder
 	loginSeen := false
-	urlSeen := false
 	for _, segment := range splitInclusive(details) {
 		line := strings.TrimSuffix(segment, "\n")
+		if strings.HasPrefix(strings.TrimSpace(line), "otpauth://") && result.TOTPURI == "" {
+			result.TOTPURI = strings.TrimSpace(line)
+			continue
+		}
 		key, value, ok := strings.Cut(line, ":")
 		isField := false
 		if ok {
 			switch strings.ToLower(strings.TrimSpace(key)) {
+			case "passport-favorite":
+				result.Favorite = strings.EqualFold(strings.TrimSpace(value), "true")
+				isField = true
+			case "passport-archived":
+				result.Archived = strings.EqualFold(strings.TrimSpace(value), "true")
+				isField = true
 			case "login", "username":
 				if !loginSeen {
 					loginSeen = true
@@ -209,8 +262,10 @@ func ParseSecret(content string) Secret {
 				if value != "" {
 					result.URLs = append(result.URLs, value)
 				}
-				if !urlSeen {
-					urlSeen = true
+				isField = true
+			case "otpauth":
+				if strings.HasPrefix(strings.TrimSpace(value), "otpauth://") && result.TOTPURI == "" {
+					result.TOTPURI = strings.TrimSpace(value)
 					isField = true
 				}
 			}
@@ -232,21 +287,60 @@ func splitInclusive(s string) []string {
 	}
 	return parts
 }
+func setFlag(content, key string, enabled bool) string {
+	password, details, _ := strings.Cut(content, "\n")
+	var out strings.Builder
+	out.WriteString(password + "\n")
+	for _, segment := range splitInclusive(details) {
+		field, _, ok := strings.Cut(strings.TrimSuffix(segment, "\n"), ":")
+		if ok && strings.EqualFold(strings.TrimSpace(field), key) {
+			continue
+		}
+		out.WriteString(segment)
+	}
+	if enabled {
+		if !strings.HasSuffix(out.String(), "\n") {
+			out.WriteByte('\n')
+		}
+		out.WriteString(key + ": true\n")
+	}
+	return out.String()
+}
 func compose(password, username, siteURL, details string) (string, error) {
+	urls := []string{}
+	if strings.TrimSpace(siteURL) != "" {
+		urls = append(urls, siteURL)
+	}
+	return composeFields(password, username, urls, "", details)
+}
+func composeFields(password, username string, urls []string, totpURI, details string) (string, error) {
 	if password == "" || len(password) > 16384 || strings.ContainsAny(password, "\r\n\x00") {
 		return "", errors.New("Invalid entry password")
 	}
 	if len(username) > 4096 || strings.ContainsAny(username, "\r\n\x00") {
 		return "", errors.New("Invalid entry login")
 	}
-	if len(siteURL) > 4096 || strings.ContainsAny(siteURL, "\r\n\x00") {
-		return "", errors.New("Invalid entry URL")
+	if len(urls) > 32 {
+		return "", errors.New("Too many entry URLs")
 	}
-	if strings.TrimSpace(siteURL) != "" {
-		parsed, err := url.Parse(strings.TrimSpace(siteURL))
-		if err != nil || parsed.Hostname() == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-			return "", errors.New("Use a valid HTTP or HTTPS URL")
+	for _, siteURL := range urls {
+		if len(siteURL) > 4096 || strings.ContainsAny(siteURL, "\r\n\x00") {
+			return "", errors.New("Invalid entry URL")
 		}
+		parsed, err := url.Parse(strings.TrimSpace(siteURL))
+		if err != nil || parsed.User != nil || parsed.Opaque != "" {
+			return "", errors.New("Use a valid HTTP(S) URL or androidapp:// package URI")
+		}
+		if parsed.Scheme == "androidapp" {
+			if parsed.Host != parsed.Hostname() || !androidPackage.MatchString(parsed.Host) || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+				return "", errors.New("Use androidapp:// followed by an Android package name")
+			}
+		} else if parsed.Hostname() == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			return "", errors.New("Use a valid HTTP(S) URL or androidapp:// package URI")
+		}
+	}
+	if len(totpURI) > 8192 || strings.ContainsAny(totpURI, "\r\n\x00") || (totpURI != "" && !strings.HasPrefix(totpURI, "otpauth://totp/")) {
+		return "", errors.New("Invalid authenticator key")
 	}
 	if len(details) > 1048576 || strings.ContainsRune(details, '\x00') {
 		return "", errors.New("Invalid extra entry fields")
@@ -256,8 +350,11 @@ func compose(password, username, siteURL, details string) (string, error) {
 	if strings.TrimSpace(username) != "" {
 		out.WriteString("login: " + strings.TrimSpace(username) + "\n")
 	}
-	if strings.TrimSpace(siteURL) != "" {
+	for _, siteURL := range urls {
 		out.WriteString("url: " + strings.TrimSpace(siteURL) + "\n")
+	}
+	if totpURI != "" {
+		out.WriteString("otpauth: " + totpURI + "\n")
 	}
 	if details != "" {
 		out.WriteString(details)
@@ -314,9 +411,102 @@ func (v *Vault) insert(id, content string) error {
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	if err := cmd.Run(); err != nil {
+		if saved, _, readErr := v.readContent(id); readErr == nil && saved == content {
+			return nil // Encryption succeeded; a later Git commit can be retried.
+		}
 		return errors.New("Unable to save entry. Check GPG key")
 	}
 	return nil
+}
+
+// insertUncommitted lets pass select the correct recipients and encrypt in a
+// disposable store, then atomically replaces only the ciphertext in the vault.
+// Running pass inside the real Git worktree would create one commit per flag.
+func (v *Vault) insertUncommitted(id, content, expectedHash string) error {
+	target, err := v.existingFile(id)
+	if err != nil {
+		return err
+	}
+	shadow, err := os.MkdirTemp("", "passport-entry-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(shadow)
+	relativeDir := filepath.Dir(filepath.FromSlash(id))
+	shadowDir := filepath.Join(shadow, relativeDir)
+	if err := os.MkdirAll(shadowDir, 0700); err != nil {
+		return err
+	}
+	// Copy the nearest recipient file into the matching shadow directory.
+	recipientDir := filepath.Dir(target)
+	for {
+		recipients := filepath.Join(recipientDir, ".gpg-id")
+		if info, err := os.Lstat(recipients); err == nil && info.Mode().IsRegular() {
+			for _, suffix := range []string{"", ".sig"} {
+				if suffix == ".sig" {
+					signature, statErr := os.Lstat(recipients + suffix)
+					if errors.Is(statErr, os.ErrNotExist) {
+						continue
+					}
+					if statErr != nil {
+						return statErr
+					}
+					if !signature.Mode().IsRegular() {
+						return errors.New("Vault recipient signature is not a regular file")
+					}
+				}
+				data, err := os.ReadFile(recipients + suffix)
+				if err != nil {
+					return err
+				}
+				if err := os.WriteFile(filepath.Join(shadowDir, ".gpg-id"+suffix), data, 0600); err != nil {
+					return err
+				}
+			}
+			break
+		} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		if recipientDir == v.root {
+			return errors.New("Vault recipients not found")
+		}
+		recipientDir = filepath.Dir(recipientDir)
+	}
+	cmd := exec.Command("pass", "insert", "-m", "-f", id)
+	cmd.Env = append(os.Environ(), "PASSWORD_STORE_DIR="+shadow)
+	cmd.Stdin = strings.NewReader(content)
+	if err := cmd.Run(); err != nil {
+		return errors.New("Unable to save entry. Check GPG key")
+	}
+	encrypted, err := os.ReadFile(filepath.Join(shadow, filepath.FromSlash(id)+".gpg"))
+	if err != nil {
+		return err
+	}
+	tempDir := filepath.Dir(target)
+	gitDir := filepath.Join(v.root, ".git")
+	if info, err := os.Stat(gitDir); err == nil && info.IsDir() {
+		tempDir = gitDir
+	}
+	temp, err := os.CreateTemp(tempDir, ".passport-entry-")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(temp.Name())
+	if _, err := temp.Write(encrypted); err != nil {
+		temp.Close()
+		return err
+	}
+	if err := temp.Sync(); err != nil {
+		temp.Close()
+		return err
+	}
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	if err := v.checkHash(id, expectedHash); err != nil {
+		return err
+	}
+	return os.Rename(temp.Name(), target)
 }
 func (v *Vault) Create(id, content string) error {
 	target, err := v.safeTarget(id)
@@ -344,6 +534,16 @@ func (v *Vault) CreateLogin(id, password, username, siteURL, details string) (Se
 		return Secret{}, fmt.Errorf("Entry created but could not be reopened: %w", err)
 	}
 	return secret, nil
+}
+func (v *Vault) CreateLoginFields(id, password, username string, urls []string, totpURI, details string) (Secret, error) {
+	content, err := composeFields(password, username, urls, totpURI, details)
+	if err != nil {
+		return Secret{}, err
+	}
+	if err := v.Create(id, content); err != nil {
+		return Secret{}, err
+	}
+	return v.Read(id)
 }
 func (v *Vault) checkHash(id, expected string) error {
 	file, err := v.existingFile(id)
@@ -388,6 +588,8 @@ func (v *Vault) UpdateLogin(id, password, username, siteURL, details, expectedHa
 	if err != nil {
 		return Secret{}, err
 	}
+	flags := ParseSecret(original)
+	content = setFlag(setFlag(content, "passport-favorite", flags.Favorite), "passport-archived", flags.Archived)
 	if err = v.Update(id, content, expectedHash); err != nil {
 		return Secret{}, err
 	}
@@ -397,6 +599,48 @@ func (v *Vault) UpdateLogin(id, password, username, siteURL, details, expectedHa
 	}
 	return secret, nil
 }
+func (v *Vault) UpdateLoginFields(id, password, username string, urls []string, totpURI, details, expectedHash string) (Secret, error) {
+	original, current, err := v.readContent(id)
+	if err != nil {
+		return Secret{}, err
+	}
+	if current != expectedHash {
+		return Secret{}, errors.New("The entry changed. Refresh before saving")
+	}
+	content, err := composeFields(password, username, urls, totpURI, details)
+	if err != nil {
+		return Secret{}, err
+	}
+	flags := ParseSecret(original)
+	content = setFlag(setFlag(content, "passport-favorite", flags.Favorite), "passport-archived", flags.Archived)
+	if err := v.Update(id, content, expectedHash); err != nil {
+		return Secret{}, err
+	}
+	return v.Read(id)
+}
+func (v *Vault) SetFlag(id, flag string, enabled bool, expectedHash string) (Secret, error) {
+	if flag != "favorite" && flag != "archived" {
+		return Secret{}, errors.New("Invalid entry flag")
+	}
+	content, hash, err := v.readContent(id)
+	if err != nil {
+		return Secret{}, err
+	}
+	if hash != expectedHash {
+		return Secret{}, errors.New("The entry changed. Refresh before saving")
+	}
+	updated := setFlag(content, "passport-"+flag, enabled)
+	if updated == content {
+		return v.Read(id)
+	}
+	if err := v.checkHash(id, expectedHash); err != nil {
+		return Secret{}, err
+	}
+	if err := v.insertUncommitted(id, updated, expectedHash); err != nil {
+		return Secret{}, err
+	}
+	return v.Read(id)
+}
 func (v *Vault) Remove(id, expectedHash string) error {
 	if err := v.checkHash(id, expectedHash); err != nil {
 		return err
@@ -404,7 +648,47 @@ func (v *Vault) Remove(id, expectedHash string) error {
 	cmd := exec.Command("pass", "rm", "-f", id)
 	cmd.Env = append(os.Environ(), "PASSWORD_STORE_DIR="+v.root)
 	if err := cmd.Run(); err != nil {
+		if target, targetErr := v.safeTarget(id); targetErr == nil {
+			if _, statErr := os.Lstat(target); errors.Is(statErr, os.ErrNotExist) {
+				return nil // The file was removed; only Git recording failed.
+			}
+		}
 		return errors.New("pass operation failed")
+	}
+	return nil
+}
+
+// Rename moves an entry with `pass mv`, which re-encrypts it when the new
+// folder has other recipients and commits when the vault uses Git. The new
+// name must be free, and the entry must still match expectedHash.
+func (v *Vault) Rename(id, newID, expectedHash string) error {
+	if id == newID {
+		return nil
+	}
+	target, err := v.safeTarget(newID)
+	if err != nil {
+		return err
+	}
+	if _, err = os.Lstat(target); err == nil {
+		return errors.New("An entry with that name already exists")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := v.checkHash(id, expectedHash); err != nil {
+		return err
+	}
+	cmd := exec.Command("pass", "mv", "--", id, newID)
+	cmd.Env = append(os.Environ(), "PASSWORD_STORE_DIR="+v.root)
+	if err := cmd.Run(); err != nil {
+		if _, oldErr := v.existingFile(id); oldErr != nil {
+			if _, newErr := v.Read(newID); newErr == nil {
+				return nil // The move succeeded; Git recording can be retried.
+			}
+		}
+		return errors.New("Unable to rename the entry")
+	}
+	if _, err := v.existingFile(newID); err != nil {
+		return errors.New("pass did not move the entry")
 	}
 	return nil
 }

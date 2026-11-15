@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"strings"
 	"testing"
+
+	"github.com/plu-nz/mono.passport/internal/vault"
 )
 
 func TestOriginsAreExact(t *testing.T) {
@@ -20,8 +22,25 @@ func TestOriginsAreExact(t *testing.T) {
 	if !matchesSite([]string{"https://example.test/login"}, "https://example.test") {
 		t.Fatal("matching site missing")
 	}
+	if !matchesSite([]string{"https://first.test/login", "https://example.test/sign-in"}, "https://example.test") {
+		t.Fatal("second website did not match")
+	}
+	if !matchesSite([]string{"androidapp://com.example.app", "https://example.test/sign-in"}, "https://example.test") {
+		t.Fatal("Android app URI prevented web matching")
+	}
 	if matchesSite([]string{"https://example.test.evil.invalid"}, "https://example.test") {
 		t.Fatal("lookalike site matched")
+	}
+}
+
+func TestArchivedEntryUnavailableToExtension(t *testing.T) {
+	secret := vault.Secret{URLs: []string{"https://example.test/login"}}
+	if !availableForOrigin(secret, "https://example.test") {
+		t.Fatal("active entry was hidden")
+	}
+	secret.Archived = true
+	if availableForOrigin(secret, "https://example.test") {
+		t.Fatal("archived entry was available")
 	}
 }
 

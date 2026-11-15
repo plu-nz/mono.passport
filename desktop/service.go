@@ -3,8 +3,10 @@ package main
 import (
 	"errors"
 	"net/url"
+	"os"
 	"os/exec"
 	"regexp"
+	"time"
 
 	"github.com/plu-nz/mono.passport/internal/github"
 	"github.com/plu-nz/mono.passport/internal/gitvault"
@@ -66,28 +68,75 @@ func (*DesktopService) ReadEntry(id string) (vault.Secret, error) {
 	return v.Read(id)
 }
 func (*DesktopService) CreateLoginEntry(id, password, username, url, details string) (vault.Secret, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	prepareImmediate()
+	defer scheduleSync()
 	v, err := vault.OpenEnv()
 	if err != nil {
 		return vault.Secret{}, err
 	}
-	secret, err := v.CreateLogin(id, password, username, url, details)
-	if err == nil {
-		scheduleSync()
+	return v.CreateLogin(id, password, username, url, details)
+}
+func (*DesktopService) CreateLoginFields(id, password, username string, urls []string, authenticator, details string) (vault.Secret, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	prepareImmediate()
+	defer scheduleSync()
+	v, err := vault.OpenEnv()
+	if err != nil {
+		return vault.Secret{}, err
 	}
-	return secret, err
+	uri, err := otp.Normalize(authenticator, id)
+	if err != nil {
+		return vault.Secret{}, err
+	}
+	return v.CreateLoginFields(id, password, username, urls, uri, details)
 }
 func (*DesktopService) UpdateLoginEntry(id, password, username, url, details, expectedHash string) (vault.Secret, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	prepareImmediate()
+	defer scheduleSync()
 	v, err := vault.OpenEnv()
 	if err != nil {
 		return vault.Secret{}, err
 	}
-	secret, err := v.UpdateLogin(id, password, username, url, details, expectedHash)
-	if err == nil {
-		scheduleSync()
+	return v.UpdateLogin(id, password, username, url, details, expectedHash)
+}
+func (*DesktopService) UpdateLoginFields(id, password, username string, urls []string, authenticator, details, expectedHash string) (vault.Secret, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	prepareImmediate()
+	defer scheduleSync()
+	v, err := vault.OpenEnv()
+	if err != nil {
+		return vault.Secret{}, err
 	}
-	return secret, err
+	uri, err := otp.Normalize(authenticator, id)
+	if err != nil {
+		return vault.Secret{}, err
+	}
+	return v.UpdateLoginFields(id, password, username, urls, uri, details, expectedHash)
+}
+func (*DesktopService) SetEntryFlag(id, flag string, enabled bool, expectedHash string) (vault.Secret, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	v, err := vault.OpenEnv()
+	if err != nil {
+		return vault.Secret{}, err
+	}
+	if err := markPending(); err != nil {
+		return vault.Secret{}, err
+	}
+	defer scheduleBatchSync()
+	return v.SetFlag(id, flag, enabled, expectedHash)
 }
 func (*DesktopService) CreateEntry(id, content string) error {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	prepareImmediate()
+	defer scheduleSync()
 	v, err := vault.OpenEnv()
 	if err != nil {
 		return err
@@ -95,10 +144,13 @@ func (*DesktopService) CreateEntry(id, content string) error {
 	if err := v.Create(id, content); err != nil {
 		return err
 	}
-	scheduleSync()
 	return nil
 }
 func (*DesktopService) UpdateEntry(id, content, expectedHash string) error {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	prepareImmediate()
+	defer scheduleSync()
 	v, err := vault.OpenEnv()
 	if err != nil {
 		return err
@@ -106,10 +158,29 @@ func (*DesktopService) UpdateEntry(id, content, expectedHash string) error {
 	if err := v.Update(id, content, expectedHash); err != nil {
 		return err
 	}
-	scheduleSync()
+	return nil
+}
+
+// RenameEntry moves an entry to a new name with pass mv.
+func (*DesktopService) RenameEntry(id, newID, expectedHash string) error {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	prepareImmediate()
+	defer scheduleSync()
+	v, err := vault.OpenEnv()
+	if err != nil {
+		return err
+	}
+	if err := v.Rename(id, newID, expectedHash); err != nil {
+		return err
+	}
 	return nil
 }
 func (*DesktopService) RemoveEntry(id, expectedHash string) error {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	prepareImmediate()
+	defer scheduleSync()
 	v, err := vault.OpenEnv()
 	if err != nil {
 		return err
@@ -117,7 +188,6 @@ func (*DesktopService) RemoveEntry(id, expectedHash string) error {
 	if err := v.Remove(id, expectedHash); err != nil {
 		return err
 	}
-	scheduleSync()
 	return nil
 }
 
@@ -141,6 +211,16 @@ func (*DesktopService) GenerateTOTP(id string) (otp.Code, error) {
 		return otp.Code{}, err
 	}
 	return otp.Generate(secret)
+}
+func (*DesktopService) PreviewTOTP(authenticator, label string) (otp.Code, error) {
+	uri, err := otp.Normalize(authenticator, label)
+	if err != nil {
+		return otp.Code{}, err
+	}
+	if uri == "" {
+		return otp.Code{}, errors.New("Enter an authenticator key")
+	}
+	return otp.CodeAt(uri, uint64(time.Now().Unix()))
 }
 func (*DesktopService) CloneVault(path, url string) (setup.VaultInfo, error) {
 	return setup.CloneVault(path, url)
@@ -167,20 +247,41 @@ func (*DesktopService) GitSetRemote(url string) (gitvault.Status, error) {
 	return g.SetRemote(url)
 }
 func (*DesktopService) GitPublishNewVault() (gitvault.Status, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
 	g, err := openGit()
 	if err != nil {
 		return gitvault.Status{}, err
 	}
-	return g.PublishNewVault()
+	status, err := g.PublishNewVault()
+	if err == nil {
+		_ = clearPendingMarker(g)
+	}
+	return status, err
 }
 func (*DesktopService) GitCommitChanges() (gitvault.Status, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
 	g, err := openGit()
 	if err != nil {
 		return gitvault.Status{}, err
+	}
+	if path, err := pendingMarker(g); err == nil {
+		if _, err := os.Stat(path); err == nil {
+			if err := flushPending(); err != nil {
+				return gitvault.Status{}, err
+			}
+			return g.Status()
+		}
 	}
 	return g.CommitChanges()
 }
 func (*DesktopService) GitMergePreservingBoth() (gitvault.Status, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	if err := flushPending(); err != nil {
+		return gitvault.Status{}, err
+	}
 	g, err := openGit()
 	if err != nil {
 		return gitvault.Status{}, err
@@ -188,6 +289,11 @@ func (*DesktopService) GitMergePreservingBoth() (gitvault.Status, error) {
 	return g.MergePreservingBoth()
 }
 func (*DesktopService) GitPull() (gitvault.Status, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	if err := flushPending(); err != nil {
+		return gitvault.Status{}, err
+	}
 	g, err := openGit()
 	if err != nil {
 		return gitvault.Status{}, err
@@ -198,6 +304,11 @@ func (*DesktopService) GitPull() (gitvault.Status, error) {
 	return g.Status()
 }
 func (*DesktopService) GitPush() (gitvault.Status, error) {
+	vaultMutation.Lock()
+	defer vaultMutation.Unlock()
+	if err := flushPending(); err != nil {
+		return gitvault.Status{}, err
+	}
 	g, err := openGit()
 	if err != nil {
 		return gitvault.Status{}, err

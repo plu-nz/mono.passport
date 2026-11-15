@@ -234,7 +234,7 @@ func dispatch(store *pairing.Store, extension string, request map[string]json.Ra
 			matched := []map[string]any{}
 			for _, entry := range entries {
 				secret, err := active.Read(entry.ID)
-				if err != nil || !matchesSite(secret.URLs, origin) {
+				if err != nil || !availableForOrigin(secret, origin) {
 					continue
 				}
 				matched = append(matched, map[string]any{"id": entry.ID, "title": entry.Title, "username": secret.Username})
@@ -260,7 +260,7 @@ func dispatch(store *pairing.Store, extension string, request map[string]json.Ra
 			return nil, errors.New("entry unavailable")
 		}
 		secret, err := active.Read(entryID)
-		if err != nil || !matchesSite(secret.URLs, origin) {
+		if err != nil || !availableForOrigin(secret, origin) {
 			return nil, errors.New("entry unavailable")
 		}
 		allowed, err = store.Authorized(extension, id, token, root)
@@ -288,6 +288,10 @@ func siteOrigin(raw string, exact bool) (string, error) {
 		host += ":" + port
 	}
 	return "https://" + host, nil
+}
+
+func availableForOrigin(secret vault.Secret, origin string) bool {
+	return !secret.Archived && matchesSite(secret.URLs, origin)
 }
 
 func matchesSite(urls []string, origin string) bool {
