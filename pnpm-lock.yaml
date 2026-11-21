@@ -178,8 +178,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@plunz/storybook':
-        specifier: github:plu-nz/lib.storybook#3449d90
-        version: https://codeload.github.com/plu-nz/lib.storybook/tar.gz/3449d901435c28c965d8b40e2bc3159019f72556(solid-js@1.9.19)
+        specifier: github:plu-nz/lib.storybook#64a03ce
+        version: https://codeload.github.com/plu-nz/lib.storybook/tar.gz/64a03cec550ea7e4a0165478524fd41f1c3f77f2(solid-js@1.9.19)
       '@wailsio/runtime':
         specifier: 3.1.0
         version: 3.1.0
@@ -337,8 +337,8 @@ packages:
   '@oxc-project/types@0.156.0':
     resolution: {integrity: sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw==}
 
-  '@plunz/storybook@https://codeload.github.com/plu-nz/lib.storybook/tar.gz/3449d901435c28c965d8b40e2bc3159019f72556':
-    resolution: {gitHosted: true, integrity: sha512-K9yZKHiIMc3e/qIJTxakbmS/WsASrVaKS07rkBSj4o77uA82TSPbm0JshwcRwnwj76vvA5UytIKCvxeDKQu5Tg==, tarball: https://codeload.github.com/plu-nz/lib.storybook/tar.gz/3449d901435c28c965d8b40e2bc3159019f72556}
+  '@plunz/storybook@https://codeload.github.com/plu-nz/lib.storybook/tar.gz/64a03cec550ea7e4a0165478524fd41f1c3f77f2':
+    resolution: {gitHosted: true, integrity: sha512-2Kes4rn1MMcHmdxy1yt8/ECluSr//j22FYXWH7t11mSm9yV+JGyZhP/8smEJ9i2ER5dxnTXzBdnPIs8QaGkLlg==, tarball: https://codeload.github.com/plu-nz/lib.storybook/tar.gz/64a03cec550ea7e4a0165478524fd41f1c3f77f2}
     version: 0.1.0
     peerDependencies:
       solid-js: ^1.9.0
@@ -1348,7 +1348,7 @@ snapshots:
 
   '@oxc-project/types@0.156.0': {}
 
-  '@plunz/storybook@https://codeload.github.com/plu-nz/lib.storybook/tar.gz/3449d901435c28c965d8b40e2bc3159019f72556(solid-js@1.9.19)':
+  '@plunz/storybook@https://codeload.github.com/plu-nz/lib.storybook/tar.gz/64a03cec550ea7e4a0165478524fd41f1c3f77f2(solid-js@1.9.19)':
     dependencies:
       solid-js: 1.9.19
 

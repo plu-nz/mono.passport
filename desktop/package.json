@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@passport/core": "workspace:*",
-    "@plunz/storybook": "github:plu-nz/lib.storybook#3449d90",
+    "@plunz/storybook": "github:plu-nz/lib.storybook#64a03ce",
     "@wailsio/runtime": "3.1.0",
     "@zxcvbn-ts/core": "4.2.0",
     "@zxcvbn-ts/language-common": "4.1.3",
