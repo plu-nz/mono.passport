@@ -9,55 +9,55 @@
   <meta name="theme-color" content="#0f0f0f">
   <meta name="description" content="Passport: a Linux-first interface for your GNU pass vault. Your vault, your Git, your devices.">
   <title>Passport — your vault stays yours</title>
-  <style>:root { color-scheme: dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f0f; color: #cdd6f4; }
+  <style>:root { color-scheme: dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f0f; color: #d7d7d7; }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body { margin: 0; line-height: 1.55; }
     a { color: inherit; }
     .wrap { width: min(1120px, calc(100% - 48px)); margin: auto; }
-    header { border-bottom: 1px solid #393947; }
+    header { border-bottom: 1px solid #333333; }
     nav { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
     .brand { font-size: 1.35rem; font-weight: 800; text-decoration: none; letter-spacing: -.06em; }
     .brand span { color: #f38ba8; }
     .navlinks { display: flex; gap: 26px; align-items: center; font-size: .9rem; }
-    .navlinks a { text-decoration: none; color: #bac2de; }
-    .navlinks a:hover, footer a:hover { color: #f6b6ab; }
+    .navlinks a { text-decoration: none; color: #c3c3c3; }
+    .navlinks a:hover, footer a:hover { color: #fab387; }
     .install-actions { display: flex; flex-wrap: wrap; gap: 12px; }
     .install code { padding: 1px 5px; border-radius: 5px; background: #e6c2cb; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .9em; }
-    .navlinks .github { color: #cdd6f4; border: 1px solid #393947; padding: 9px 14px; border-radius: 999px; }
+    .navlinks .github { color: #d7d7d7; border: 1px solid #333333; padding: 9px 14px; border-radius: 999px; }
     .hero { padding: 108px 0 100px; display: grid; grid-template-columns: 1.2fr .8fr; gap: 72px; align-items: center; }
     .eyebrow { color: #f38ba8; font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .18em; }
     h1 { font-size: clamp(3.5rem, 7vw, 6.5rem); line-height: .98; letter-spacing: -.075em; margin: 18px 0 28px; max-width: 720px; }
     h1 in { font-style: normal; color: #f38ba8; }
-    .lead { color: #bac2de; font-size: 1.2rem; max-width: 600px; }
+    .lead { color: #c3c3c3; font-size: 1.2rem; max-width: 600px; }
     .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
     .button { display: inline-flex; align-items: center; justify-content: center; padding: 13px 19px; border-radius: 9px; font-weight: 700; text-decoration: none; }
     .button.primary { background: #f38ba8; color: #0f0f0f; }
-    .button.secondary { border: 1px solid #6c7086; }
-    .hero-art { min-height: 380px; border: 1px solid #45475a; border-radius: 24px; background: radial-gradient(circle at 50% 40%, #4a2f39 0, #2a1c22 37%, #141012 72%); display: grid; place-items: center; overflow: hidden; position: relative; }
-    .hero-art:before, .hero-art:after { content: ""; position: absolute; border: 1px solid #6c708660; border-radius: 50%; width: 410px; height: 410px; }
+    .button.secondary { border: 1px solid #717171; }
+    .hero-art { min-height: 380px; border: 1px solid #484848; border-radius: 24px; background: radial-gradient(circle at 50% 40%, #4a2f39 0, #2a1c22 37%, #141012 72%); display: grid; place-items: center; overflow: hidden; position: relative; }
+    .hero-art:before, .hero-art:after { content: ""; position: absolute; border: 1px solid #71717160; border-radius: 50%; width: 410px; height: 410px; }
     .hero-art:after { width: 290px; height: 290px; }
-    .vault { z-index: 1; width: 156px; height: 178px; border: 4px solid #f38ba8; border-radius: 26px; background: #313244; box-shadow: 0 24px 80px #00000099, inset 0 0 40px #f38ba822; display: grid; place-items: center; transform: rotate(-7deg); }
+    .vault { z-index: 1; width: 156px; height: 178px; border: 4px solid #f38ba8; border-radius: 26px; background: #333333; box-shadow: 0 24px 80px #00000099, inset 0 0 40px #f38ba822; display: grid; place-items: center; transform: rotate(-7deg); }
     .vault svg { width: 78px; fill: none; stroke: #f38ba8; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
-    .section { border-top: 1px solid #393947; padding: 82px 0; }
+    .section { border-top: 1px solid #333333; padding: 82px 0; }
     h2 { font-size: clamp(2rem, 4vw, 3.3rem); line-height: 1.08; letter-spacing: -.055em; margin: 10px 0 20px; }
-    .section-intro { max-width: 680px; color: #bac2de; font-size: 1.08rem; }
+    .section-intro { max-width: 680px; color: #c3c3c3; font-size: 1.08rem; }
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 38px; }
-    .card { border: 1px solid #393947; border-radius: 16px; background: #1c1c1c; padding: 27px; }
+    .card { border: 1px solid #333333; border-radius: 16px; background: #1c1c1c; padding: 27px; }
     .card .number { color: #f38ba8; font-family: ui-monospace, monospace; font-size: .8rem; }
     .card h3 { font-size: 1.15rem; margin: 28px 0 8px; }
-    .card p { color: #bac2de; margin: 0; }
+    .card p { color: #c3c3c3; margin: 0; }
     .install { background: #f2cdd5; color: #1e1e2e; padding: 82px 0; }
-    .install .eyebrow { color: #d20f39; }
+    .install .eyebrow { color: #f38ba8; }
     .install p { max-width: 660px; }
-    .command { margin: 28px 0 13px; padding: 19px 22px; border-radius: 11px; background: #1c1c1c; color: #cdd6f4; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-x: auto; white-space: nowrap; }
+    .command { margin: 28px 0 13px; padding: 19px 22px; border-radius: 11px; background: #1c1c1c; color: #d7d7d7; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-x: auto; white-space: nowrap; }
     .command span { color: #f38ba8; }
     .fine { font-size: .87rem; opacity: .8; }
     .roadmap { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
     .roadmap ul { margin: 20px 0 0; padding: 0; list-style: none; }
-    .roadmap li { padding: 14px 0; border-bottom: 1px solid #393947; color: #bac2de; }
-    .roadmap li strong { color: #cdd6f4; }
-    footer { padding: 34px 0; border-top: 1px solid #393947; color: #bac2de; font-size: .88rem; }
+    .roadmap li { padding: 14px 0; border-bottom: 1px solid #333333; color: #c3c3c3; }
+    .roadmap li strong { color: #d7d7d7; }
+    footer { padding: 34px 0; border-top: 1px solid #333333; color: #c3c3c3; font-size: .88rem; }
     footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
     footer a { text-decoration: none; }
     @media (max-width: 760px) { .hero, .roadmap { grid-template-columns: 1fr; } .hero { padding: 70px 0; gap: 42px; } .hero-art { min-height: 280px; } .grid { grid-template-columns: 1fr; } .navlinks a:not(.github) { display: none; } .section, .install { padding: 64px 0; } }</style>
@@ -67,7 +67,7 @@
   <main>
     <section class="hero wrap"><div><div class="eyebrow">Open source · GNU pass · Linux first</div><h1>Your vault stays <em>yours.</em></h1><p class="lead">Passport is an interface for GNU pass vaults. Your secrets stay in your GPG files, and you choose where to sync your private Git repository.</p><div class="actions"><a class="button primary" href="#install">Install on Linux →</a><a class="button secondary" href="https://github.com/plu-nz/mono.passport#code-status">Explore the project</a></div></div><div class="hero-art" aria-hidden="true"><div class="vault"><svg viewBox="0 0 90 90"><path d="M22 40V27a23 23 0 0 1 46 0v13"/><rect x="13" y="39" width="64" height="46" rx="10"/><circle cx="45" cy="60" r="5"/><path d="M45 65v9"/></svg></div></div></section>
     <section id="how-it-works" class="section"><div class="wrap"><div class="eyebrow">An open foundation</div><h2>The same vault, on your terms.</h2><p class="section-intro">Passport uses the GNU pass format and tools. Use the same vault in the terminal, on Linux desktop, and in the Brave and Chrome extensions.</p><div class="grid"><article class="card"><div class="number">01 / FORMAT</div><h3>GPG files</h3><p>Read, create, and edit GNU pass entries. Your private key stays on your device.</p></article><article class="card"><div class="number">02 / CONTROL</div><h3>Your choice of Git host</h3><p>Publish or clone your vault using a private Git repository. The desktop can commit, pull, and push changes.</p></article><article class="card"><div class="number">03 / TERMINAL</div><h3>Keep your workflow</h3><p>GNU pass still works directly in the terminal. Passport is another interface for the same vault.</p></article></div></div></section>
-    <section id="install" class="install"><div class="wrap"><div class="eyebrow">Early release</div><h2>Try it on Linux.</h2><p>The installer downloads the Linux x86_64 release, verifies its SHA-256 checksum, and installs Passport for your user. You do not need to clone the repository.</p><div class="command"><span>$</span> curl -LsSf https://passport.plu.nz/install.sh | sh</div><p class="fine">Requires GNU pass, GPG, GTK4, and WebKitGTK 6.0 (for example Ubuntu 24.04, Debian 13, or Fedora 39 and later). Review the <a href="https://github.com/plu-nz/mono.passport/blob/main/scripts/install.sh">installer script</a> before running it.</p><p>Once installed, save an entry for <code>https://passport.plu.nz/login</code> and fill the <a href="/login">test login page</a> with the browser extension. It accepts any username and password and sends nothing.</p><div class="install-actions"><a class="button secondary" style="border-color:#d20f39" href="https://github.com/plu-nz/mono.passport/releases/latest">View latest release ↗</a><a class="button secondary" style="border-color:#d20f39" href="/login">Try the test login →</a></div></div></section>
+    <section id="install" class="install"><div class="wrap"><div class="eyebrow">Early release</div><h2>Try it on Linux.</h2><p>The installer downloads the Linux x86_64 release, verifies its SHA-256 checksum, and installs Passport for your user. You do not need to clone the repository.</p><div class="command"><span>$</span> curl -LsSf https://passport.plu.nz/install.sh | sh</div><p class="fine">Requires GNU pass, GPG, GTK4, and WebKitGTK 6.0 (for example Ubuntu 24.04, Debian 13, or Fedora 39 and later). Review the <a href="https://github.com/plu-nz/mono.passport/blob/main/scripts/install.sh">installer script</a> before running it.</p><p>Once installed, save an entry for <code>https://passport.plu.nz/login</code> and fill the <a href="/login">test login page</a> with the browser extension. It accepts any username and password and sends nothing.</p><div class="install-actions"><a class="button secondary" style="border-color:#f38ba8" href="https://github.com/plu-nz/mono.passport/releases/latest">View latest release ↗</a><a class="button secondary" style="border-color:#f38ba8" href="/login">Try the test login →</a></div></div></section>
     <section class="section"><div class="wrap roadmap"><div><div class="eyebrow">Linux MVP</div><h2>Where we are.</h2><p class="section-intro">The desktop manages the GNU pass vault and syncs it with Git. Brave and Chrome extensions are loaded and paired separately in each browser, then fill logins when you choose an entry.</p></div><div><ul><li><strong>Desktop:</strong> entries, TOTP, Git, and extension access controls.</li><li><strong>Browsers:</strong> tested forms in Brave and stable Chrome using disposable profiles.</li><li><strong>Later:</strong> biometrics, an independent web client, and a dedicated Android app.</li></ul><p><a href="https://github.com/plu-nz/mono.passport/blob/main/README.md">Read the requirements and limitations ↗</a></p></div></div></section>
   </main>
   <footer><div class="wrap"><span>Passport · An open source project by <a href="https://github.com/plu-nz">plu.nz</a></span><span><a href="/login">Test login</a> · <a href="https://github.com/plu-nz/mono.passport">Source code</a> · <a href="https://github.com/plu-nz/mono.passport/issues">Issues</a></span></div></footer>
