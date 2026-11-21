@@ -1,26 +1,26 @@
 /* Passport follows the PLUNZ design system (@plunz/storybook): square corners,
    1px lines, solid/outline/ghost buttons. Colors come from the desktop GTK
-   theme (theme.ts); without them, Darkppuccin with the red accent. */
+   theme (theme.ts); without them, Tinta with the red accent. */
 
-/* App tokens. Dark fallback: Darkppuccin. Light fallback: Catppuccin Latte. */
+/* App tokens. Dark fallback: Tinta. Light fallback: Tinta light. */
 :root { color-scheme: dark;
-  --page: #0f0f0f; --card: #1c1c1c; --raised: #313244; --input: #0f0f0f;
-  --line: #393947; --control-line: #6c7086; --text: #cdd6f4; --muted: #bac2de; --code: #cdd6f4;
-  --accent: #f38ba8; --on-accent: #0f0f0f; --danger: #f38ba8; --pending: #f6b6ab; --ready: #a6e3a1;
-  --number: #89b4fa; --special: #f6b6ab;
+  --page: #0f0f0f; --card: #1c1c1c; --raised: #333333; --input: #0f0f0f;
+  --line: #333333; --control-line: #717171; --text: #d7d7d7; --muted: #c3c3c3; --code: #d7d7d7;
+  --accent: #f38ba8; --on-accent: #0f0f0f; --danger: #f38ba8; --pending: #fab387; --ready: #a6e3a1;
+  --number: #89b4fa; --special: #fab387;
 }
 :root[data-theme="light"] { color-scheme: light;
-  --page: #eff1f5; --card: #e6e9ef; --raised: #ccd0da; --input: #eff1f5;
-  --line: #ccd0da; --control-line: #9ca0b0; --text: #4c4f69; --muted: #5c5f77; --code: #4c4f69;
-  --accent: #d20f39; --on-accent: #eff1f5; --danger: #d20f39; --pending: #fe640b; --ready: #40a02b;
-  --number: #1e66f5; --special: #fe640b;
+  --page: #f7f7f9; --card: #ffffff; --raised: #f7f7f9; --input: #f7f7f9;
+  --line: #d0d0d0; --control-line: #909090; --text: #515151; --muted: #606060; --code: #515151;
+  --accent: #f38ba8; --on-accent: #0f0f0f; --danger: #f38ba8; --pending: #fab387; --ready: #a6e3a1;
+  --number: #89b4fa; --special: #fab387;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) { color-scheme: light;
-    --page: #eff1f5; --card: #e6e9ef; --raised: #ccd0da; --input: #eff1f5;
-    --line: #ccd0da; --control-line: #9ca0b0; --text: #4c4f69; --muted: #5c5f77; --code: #4c4f69;
-    --accent: #d20f39; --on-accent: #eff1f5; --danger: #d20f39; --pending: #fe640b; --ready: #40a02b;
-    --number: #1e66f5; --special: #fe640b;
+    --page: #f7f7f9; --card: #ffffff; --raised: #f7f7f9; --input: #f7f7f9;
+    --line: #d0d0d0; --control-line: #909090; --text: #515151; --muted: #606060; --code: #515151;
+    --accent: #f38ba8; --on-accent: #0f0f0f; --danger: #f38ba8; --pending: #fab387; --ready: #a6e3a1;
+    --number: #89b4fa; --special: #fab387;
   }
 }
 /* Desktop theme: theme.ts sets data-system and --gtk-* from the GTK theme. */
@@ -29,9 +29,9 @@
   --input: var(--gtk-bg);
   --line: var(--gtk-border, color-mix(in srgb, var(--gtk-fg) 16%, var(--gtk-bg))); --control-line: color-mix(in srgb, var(--gtk-fg) 38%, var(--gtk-bg));
   --text: var(--gtk-fg); --muted: var(--gtk-placeholder, color-mix(in srgb, var(--gtk-fg) 70%, var(--gtk-bg))); --code: var(--gtk-text, var(--gtk-fg));
-  /* Lifted toward the text color so it reads as text and outline too, like the Darkppuccin pastels. */
+  /* Lifted toward the text color so it reads as text and outline too, like the Tinta pastels. */
   --accent: color-mix(in srgb, var(--gtk-accent) 72%, var(--gtk-fg)); --on-accent: var(--gtk-bg);
-  --danger: var(--gtk-error, #f38ba8); --pending: var(--gtk-warning, #f6b6ab); --ready: var(--gtk-success, var(--gtk-accent));
+  --danger: var(--gtk-error, #f38ba8); --pending: var(--gtk-warning, #fab387); --ready: var(--gtk-success, var(--gtk-accent));
   --number: color-mix(in srgb, var(--gtk-accent) 55%, var(--gtk-fg)); --special: color-mix(in srgb, var(--gtk-error, #f38ba8) 65%, var(--gtk-fg));
 }
 
